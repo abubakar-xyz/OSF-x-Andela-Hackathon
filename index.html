@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#071820" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="src/styles.css" />
+    <title>NURU Civic</title>
+  </head>
+  <body>
+    <main>
+      <section class="home" aria-label="NURU Home">
+        <h1>NURU Civic</h1>
+        <p id="lead">What would you like to understand or show me?</p>
+        <label for="language">Language</label>
+        <select id="language" aria-label="Language control">
+          <option>English</option>
+          <option>Kiswahili</option>
+        </select>
+        <div class="controls">
+          <button id="talkBtn">Hold to talk</button>
+          <button id="showBtn">Show NURU</button>
+          <button id="typeBtn">Type instead</button>
+        </div>
+        <details>
+          <summary>Action dock</summary>
+          <div class="dock">
+            <button data-action="check">Check something</button>
+            <button data-action="report">Report an issue</button>
+            <button data-action="understand">Understand service/policy</button>
+            <button data-action="drafts">Open my drafts</button>
+            <button data-action="cases">View saved cases</button>
+          </div>
+        </details>
+        <label>
+          <input id="lowData" type="checkbox" /> Low-data mode
+        </label>
+        <label>
+          <input id="privacyMode" type="checkbox" checked /> Privacy mode (strip EXIF before storage)
+        </label>
+      </section>
+
+      <section class="workspace" aria-label="Evidence Workspace">
+        <h2>Record vs Reality</h2>
+        <textarea id="claim" rows="2" placeholder="Describe the claim you want to verify"></textarea>
+        <textarea id="observation" rows="2" placeholder="Describe what you observed in the field"></textarea>
+        <button id="verifyBtn">Verify claim</button>
+        <button id="checkAgainBtn">Check Again</button>
+        <pre id="evidenceOut" aria-live="polite"></pre>
+      </section>
+
+      <section class="workspace" aria-label="Draft Studio">
+        <h2>Draft Studio</h2>
+        <select id="draftFormat">
+          <option value="email">Concise email</option>
+          <option value="formal_letter">Formal letter</option>
+          <option value="whatsapp">WhatsApp summary</option>
+        </select>
+        <button id="buildDraftBtn">Build draft</button>
+        <label>
+          <input id="sharePreciseLocation" type="checkbox" /> Include precise location
+        </label>
+        <label>
+          <input id="approval" type="checkbox" /> I approve external action preparation
+        </label>
+        <button id="prepareActionBtn">Prepare external action</button>
+        <pre id="draftOut" aria-live="polite"></pre>
+      </section>
+    </main>
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
