@@ -254,3 +254,17 @@ test('16 a fixture is labelled in the data, so the interface must label it', asy
   assert.equal(d.draft.contains_fixture, true);
   assert.match(d.draft.body, /DEMO FIXTURE/, 'the artifact itself must carry the label');
 });
+
+/* ── 17 ─────────────────────────────────────────────────────────────── */
+test('17 identity and evidence are separable, as THREAT_MODEL.md claims', async () => {
+  /* The two stores exist so "delete my details" and "delete everything"
+     can be different promises. Asserting the module surface here; the
+     browser drills exercise the UI path. */
+  const store = await import('../src/core/store.js');
+  for (const fn of ['saveCase', 'listCases', 'deleteCase', 'setIdentity', 'getIdentity',
+                    'clearIdentity', 'deleteEverything']) {
+    assert.equal(typeof store[fn], 'function', `${fn} must exist`);
+  }
+  assert.notEqual(store.clearIdentity, store.deleteEverything,
+    'clearing details must not be an alias for deleting everything');
+});

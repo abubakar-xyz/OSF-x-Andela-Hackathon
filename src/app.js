@@ -389,6 +389,12 @@ function showDisclosure() {
   const review = DisclosureReview({
     draft: app.draft, payload: app.payload, user: app.user,
     onApprove: (d) => { app.disclosure = d; app.machine.send('APPROVE', { disclosureApproved: true }); },
+    onUserChange: (u) => {
+      app.user = u;
+      /* Identity lives in its own store so deleting it leaves the case
+         intact, and vice versa. §22 */
+      for (const [k, v] of Object.entries(u)) store.setIdentity(k, v).catch(() => {});
+    },
     onBack: () => { app.machine.send('BACK'); syncAperture(); showDraft(); },
     onExport: doExport,
   });
@@ -542,17 +548,35 @@ function privacyPanel() {
     el('h3', { class: 'card__title', text: t('privacy.title') }),
     el('p', { class: 'tt__row', text: t('privacy.body') }),
     el('p', { class: 'tt__checked', text: liveConfigured() ? '' : HONEST_LABEL }),
-    el('button', {
-      class: 'btn btn--danger', type: 'button', style: { marginTop: '12px' },
-      text: t('privacy.delete'),
-      onclick: async () => {
-        if (!confirm(t('privacy.confirm'))) return;
-        await store.deleteEverything();
-        app.payload = null; app.route = null; app.draft = null; app.caseId = null;
-        say('Gone. Nothing of yours is left on this phone.');
-        openCases();
-      },
-    }));
+    el('p', { class: 'tt__checked', style: { marginTop: '12px' },
+      text: app.user && Object.keys(app.user).length
+        ? `Held about you: ${Object.keys(app.user).join(', ')}.`
+        : 'Nothing personal is held about you.' }),
+    /* Identity and evidence are separate stores precisely so these two
+       buttons can be separate promises. §22 */
+    el('div', { class: 'btn-row', style: { marginTop: '12px' } },
+      el('button', {
+        class: 'btn', type: 'button',
+        text: 'Delete my details only',
+        disabled: !Object.keys(app.user ?? {}).length || undefined,
+        onclick: async () => {
+          await store.clearIdentity();
+          app.user = {};
+          say('Your details are gone. Your cases are untouched.');
+          openCases();
+        },
+      }),
+      el('button', {
+        class: 'btn btn--danger', type: 'button',
+        text: t('privacy.delete'),
+        onclick: async () => {
+          if (!confirm(t('privacy.confirm'))) return;
+          await store.deleteEverything();
+          app.payload = null; app.route = null; app.draft = null; app.caseId = null; app.user = {};
+          say('Gone. Nothing of yours is left on this phone.');
+          openCases();
+        },
+      })));
 }
 
 /* ── Camera (§15.2) ──────────────────────────────────────────────────── */
@@ -819,6 +843,8 @@ async function boot() {
   }
 
   if (app.tier !== 'full') status(TIER_LINE[app.tier] ?? '');
+
+  try { app.user = await store.getIdentity(); } catch { app.user = {}; }
 
   app.firstRun = !store.readPrefs().seen;
   store.writePrefs({ seen: true, lang: getLanguage() });

@@ -147,6 +147,7 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 .chip-sm[aria-pressed="true"] {
   background: var(--teal-800); color: var(--paper-50); border-color: var(--teal-800);
 }
+.chip-sm:disabled, .chip:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ══ Primary night controls ══════════════════════════════════ */
 .night-btn {

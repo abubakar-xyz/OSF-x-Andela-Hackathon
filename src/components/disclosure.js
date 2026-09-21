@@ -17,8 +17,9 @@ const PRECISION = [
   ['county', 'County only'],
 ];
 
-export function DisclosureReview({ draft, payload, user = {}, onApprove, onBack, onExport }) {
+export function DisclosureReview({ draft, payload, user = {}, onApprove, onBack, onExport, onUserChange }) {
   const disclosure = { ...draft.disclosure };
+  const details = { ...user };
   const wrap = el('section', { 'aria-label': 'Disclosure review' });
   const rows = el('div');
 
@@ -58,14 +59,51 @@ export function DisclosureReview({ draft, payload, user = {}, onApprove, onBack,
     locRow.querySelector('.disc__body').append(picker);
     rows.append(locRow);
 
-    rows.append(toggleRow('Your name', disclosure.includeName, user.name,
-      (v) => { disclosure.includeName = v; render(); }));
-    rows.append(toggleRow('Your phone number', disclosure.includePhone, user.phone,
-      (v) => { disclosure.includePhone = v; render(); }));
+    rows.append(toggleRow('Your name', disclosure.includeName, details.name,
+      (v) => { disclosure.includeName = v; render(); },
+      () => ask('Your name', 'name')));
+    rows.append(toggleRow('Your phone number', disclosure.includePhone, details.phone,
+      (v) => { disclosure.includePhone = v; render(); },
+      () => ask('Your phone number', 'phone')));
   };
+
+  /* Nothing else in the product collects a name or a number — and a draft
+     that offers to include one needs somewhere for it to come from. It is
+     asked for here, at the moment it would be used, and kept in the
+     identity store, separate from the case. §22 */
+  function ask(label, key) {
+    import('./sheet.js').then(({ openSheet }) => {
+      openSheet(label, (body, { close }) => {
+        const input = el('input', {
+          class: 'cap-edit', 'aria-label': label,
+          value: details[key] ?? '',
+          style: { color: 'var(--text-on-paper)', background: 'var(--paper-50)',
+                   borderColor: 'var(--paper-300)' },
+        });
+        const save = () => {
+          const v = input.value.trim();
+          close();
+          if (!v) return;
+          details[key] = v;
+          disclosure[key === 'name' ? 'includeName' : 'includePhone'] = true;
+          onUserChange?.({ ...details });
+          render();
+        };
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+        body.append(
+          el('p', { class: 'tt__checked',
+            text: 'Kept on this phone, separately from the case. You can remove it at any time.' }),
+          input,
+          el('button', { class: 'btn btn--primary', type: 'button',
+            style: { width: '100%', marginTop: '12px' }, text: 'Use this', onclick: save }),
+        );
+        setTimeout(() => input.focus(), 50);
+      });
+    });
+  }
   render();
 
-  const audit = () => auditDraftAgainstDisclosure({ ...draft, disclosure }, user);
+  const audit = () => auditDraftAgainstDisclosure({ ...draft, disclosure }, details);
 
   const actions = el('div', { class: 'btn-row', style: { marginTop: '20px' } });
   for (const [kind, label] of [['copy', 'Copy'], ['print', 'PDF'], ['email', 'Email'], ['whatsapp', 'WhatsApp']]) {
@@ -135,12 +173,13 @@ function outRow(title, detail) {
     el('span', { class: 'sr-only', text: 'not included' }));
 }
 
-function toggleRow(title, on, value, onToggle) {
-  const row = on ? inRow(title, value || '(not set)') : outRow(title, value ? 'Not included' : '(not set)');
+function toggleRow(title, on, value, onToggle, onSet) {
+  const row = on ? inRow(title, value || '(not set)')
+                 : outRow(title, value ? 'Not included' : 'Not set');
   row.querySelector('.disc__body').append(el('button', {
-    class: 'chip-sm', type: 'button', text: on ? 'Remove' : 'Include',
-    disabled: !value || undefined,
-    onclick: () => onToggle(!on),
+    class: 'chip-sm', type: 'button',
+    text: on ? 'Remove' : value ? 'Include' : 'Add it',
+    onclick: () => (value ? onToggle(!on) : onSet?.()),
   }));
   return row;
 }
