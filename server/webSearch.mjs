@@ -97,7 +97,20 @@ export async function searchPublicRecords({ ai, model, query, context = '' }) {
     const uri = chunk?.web?.uri;
     if (!uri || seen.has(uri)) continue;
     seen.add(uri);
-    const domain = hostnameOf(uri);
+    /* The direct Gemini API (confirmed against real, live responses —
+       not documented, since ai.google.dev is unreachable here) never
+       populates `web.domain`, and `web.uri` is an opaque
+       vertexaisearch.cloud.google.com redirect, not the source's real
+       address — trusting its hostname would make every single result
+       "unverified" regardless of the actual site. `web.title` is
+       reliably the bare source domain instead (confirmed across ~14
+       real grounding chunks, mixing real government sites with
+       facebook.com and an unrelated NGO site — exactly why this still
+       needs a real tier check, not a blanket upgrade). Falls back to
+       the redirect's own hostname only if title is missing. */
+    const domain = /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(chunk.web.title?.trim() ?? '')
+      ? chunk.web.title.trim()
+      : hostnameOf(uri);
     sources.push({ title: chunk.web.title || domain, url: uri, domain, tier: trustTier(domain) });
   }
 

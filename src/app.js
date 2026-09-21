@@ -178,6 +178,11 @@ function renderChips(list) {
 
 async function handleUtterance(text) {
   if (!text?.trim()) return;
+  /* The 12s nudge exists for someone who hasn't started yet. The moment
+     they have — typed, or spoken and still being answered — it has
+     nothing left to say and every reason to stay quiet: a generic "no
+     rush" landing mid-answer read as Wazi talking over itself. */
+  app.nudged = true;
   app.captions.settle();
 
   const detected = detectLanguage(text);
@@ -198,6 +203,23 @@ async function handleUtterance(text) {
   }
   if (intent.intent === 'cases') { openCases(); return; }
   if (intent.intent === 'show') { openCamera(); return; }
+
+  /* A live session is a live conversation — typed or spoken, it is the
+     same person talking to the same model. Routing text around it into
+     the local pipeline instead would mean the model never hears it, and
+     whoever is testing by typing (the natural thing to do without a
+     working mic) never actually talks to Wazi at all — only to the
+     offline fallback, silently. §23.1's two-brain split is about who
+     holds evidence, not who hears the person. */
+  if (app.live?.connected) {
+    /* Formal machine state is unaffected here — same as real speech
+       input, it advances only when a tool surface arrives (or not at
+       all, for a plain conversational reply), never on the act of
+       sending text itself. */
+    app.live.text(text);
+    return;
+  }
+
   if (intent.intent === 'chat') {
     app.machine.send('SPEECH'); app.machine.send('TURN_END'); app.machine.send('CHAT');
     syncAperture();
@@ -880,7 +902,7 @@ async function begin(micGranted) {
      relay we fall back to the browser speech engine and say so. */
   if (micGranted && liveConfigured() && app.tier !== 'text') {
     app.live = createLiveVoice({
-      onHeard: (t) => app.captions.partial(t),
+      onHeard: (t) => { app.nudged = true; app.captions.partial(t); },
       onSaid: (t) => { app.captions.settle(); app.captions.say(t); },
       onEnergy: (v) => { app.aperture?.setEnergy(v); app.companion?.setEnergy(v); },
       onState: (st) => {

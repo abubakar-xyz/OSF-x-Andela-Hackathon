@@ -1,6 +1,8 @@
 node_modules/
 *.tmp.mjs
 .DS_Store
+.env
+.env.local
 
 # Vendored at install time by scripts/vendor-three.mjs, not committed:
 # 80,000 lines of third-party source makes a pull request unreviewable.

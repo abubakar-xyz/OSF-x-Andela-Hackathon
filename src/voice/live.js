@@ -72,6 +72,7 @@ export function createLiveVoice({
   let loudFrames = 0;
   let open = false;
   let model = '';
+  let speakEnergy = 0;
 
   const send = (obj) => { if (ws?.readyState === 1) ws.send(JSON.stringify(obj)); };
 
@@ -82,6 +83,7 @@ export function createLiveVoice({
     queued = [];
     playhead = actx ? actx.currentTime : 0;
     loudFrames = 0;
+    speakEnergy = 0;
     if (speaking) { speaking = false; onState?.('listening'); }
   }
 
@@ -111,13 +113,19 @@ export function createLiveVoice({
     queued.push(node);
     node.onended = () => {
       queued = queued.filter((n) => n !== node);
-      if (!queued.length && speaking) { speaking = false; onState?.('listening'); }
+      if (!queued.length && speaking) { speaking = false; speakEnergy = 0; onState?.('listening'); }
     };
     if (!speaking) { speaking = true; speechStartedAt = performance.now(); loudFrames = 0; onState?.('speaking'); }
     /* Cheap amplitude for the core pulse: RMS of the chunk. */
     let sum = 0;
     for (let i = 0; i < ch.length; i += 16) sum += ch[i] * ch[i];
-    onEnergy?.(Math.min(1, Math.sqrt(sum / (ch.length / 16)) * 3));
+    const instant = Math.min(1, Math.sqrt(sum / (ch.length / 16)) * 3);
+    /* Fast attack, slower decay — a syllable's onset should register at
+       once, but the pulse between syllables should ebb, not chop to
+       zero and back every ~150ms chunk boundary. A flat lerp toward
+       `instant` does that chopping; this doesn't. */
+    speakEnergy = instant > speakEnergy ? instant : speakEnergy * 0.55 + instant * 0.45;
+    onEnergy?.(speakEnergy);
   }
 
   async function startMic() {
