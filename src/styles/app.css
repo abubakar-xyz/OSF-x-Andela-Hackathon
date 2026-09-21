@@ -11,6 +11,11 @@ body {
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
 }
+/* Figures in a register have to line up in their column. */
+.fact, .tt__rec-val, .receipt__id, .day__id, .case-row__id, .datum {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: var(--num-feat);
+}
 button, input, select, textarea { font: inherit; color: inherit; }
 button { background: none; border: 0; cursor: pointer; }
 img, svg, canvas { display: block; max-width: 100%; }
@@ -76,6 +81,35 @@ button, [role="button"], select, summary { min-height: var(--touch); }
   /* Optical centre sits above true centre — reads better. §15.1 */
   padding-bottom: 8vh;
 }
+
+/* The aperture sits in a housing, the way a lens does: a barrel ring
+   and a pool of its own light. Without it the character floats in a
+   void and reads as a loose graphic rather than an instrument. */
+.aperture { position: relative; display: grid; place-items: center; }
+.aperture::before {
+  content: ''; position: absolute; inset: -9%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--teal-500) 12%, transparent);
+  background:
+    radial-gradient(closest-side,
+      color-mix(in srgb, var(--amber-500) 10%, transparent) 0%,
+      transparent 76%);
+  pointer-events: none;
+}
+/* The lamp throws light onto the stage behind it. Scaled by the
+   character's own energy so the room brightens when Wazi speaks. */
+.aperture::after {
+  content: ''; position: absolute; inset: -80%;
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side,
+    color-mix(in srgb, var(--amber-500) 9%, transparent) 0%,
+    transparent 70%);
+}
+.tier-light .aperture::after, .tier-text .aperture::after { display: none; }
+.aperture[data-state="offline"]::before { border-color: var(--ink-600); }
+.aperture[data-state="offline"]::after,
+.aperture[data-state="dormant"]::after { opacity: 0.35; }
+.aperture-svg { position: relative; z-index: 1; }
 .night__foot {
   display: flex; align-items: center; justify-content: space-between;
   gap: var(--s4); position: relative; z-index: 2;
@@ -105,7 +139,7 @@ button, [role="button"], select, summary { min-height: var(--touch); }
   border-bottom: 1px solid var(--paper-300); margin-bottom: var(--s5);
 }
 .day__back { display: flex; align-items: center; gap: var(--s2); font: var(--label); }
-.day__id { font: var(--mono); color: var(--text-on-paper-muted); }
+.day__id { font: var(--datum); font-feature-settings: var(--num-feat); color: var(--text-on-paper-muted); }
 
 .wordmark { font: var(--title); letter-spacing: -0.03em; }
 
@@ -129,8 +163,8 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 /* ══ Chips (§12.3) ═══════════════════════════════════════════ */
 .chips { display: flex; flex-wrap: wrap; gap: var(--s2); justify-content: center; }
 .chip {
-  background: var(--ink-700); border: 1px solid var(--ink-600);
-  color: var(--text-on-ink); border-radius: var(--r-pill);
+  background: var(--veil-ink); border: 1px solid var(--ink-600);
+  color: var(--text-on-ink); border-radius: var(--r-chip);
   padding: var(--s2) var(--s4); font: var(--label);
   animation: rise var(--dur-base) var(--ease-out) both;
 }
@@ -140,8 +174,8 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 
 /* Day-side chips use the dark ramp for text on paper. §11.1 */
 .chip-sm {
-  border: 1px solid var(--paper-300); background: var(--paper-50);
-  color: var(--text-on-paper); border-radius: var(--r-pill);
+  border: var(--rule-hair); background: var(--paper-50);
+  color: var(--text-on-paper); border-radius: var(--r-chip);
   padding: var(--s2) var(--s4); font: var(--label);
 }
 .chip-sm[aria-pressed="true"] {
@@ -159,25 +193,35 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 .night-btn:active { color: var(--teal-500); }
 
 .lang-chip {
-  display: flex; align-items: center; gap: var(--s2);
-  background: transparent; border: 1px solid var(--ink-600);
-  border-radius: var(--r-pill); padding: var(--s2) var(--s3);
+  display: flex; align-items: baseline; gap: var(--s2);
+  background: transparent; border: 0; border-bottom: 1px solid var(--ink-600);
+  border-radius: 0; padding: var(--s2) var(--s1);
   font: var(--label); color: var(--text-on-ink-muted); min-height: 40px;
 }
 .lang-tier {
-  font-size: 11px; text-transform: none; padding: 2px 6px;
-  border-radius: var(--r-pill); background: var(--ink-600); color: var(--amber-400);
+  font-size: 12px; padding: 0;
+  background: none; color: var(--text-on-ink-muted); opacity: 0.7;
 }
 
 /* ══ Cards (Day) ═════════════════════════════════════════════ */
+/* A card is a sheet of bond laid on the register, so it reads as
+   slightly lighter than what it sits on, with one hairline and no
+   shadow. Day has no box-shadow anywhere in this product. */
 .card {
-  background: var(--paper-50); border: 1px solid var(--paper-300);
+  background: linear-gradient(var(--veil-paper), var(--veil-paper)), var(--paper-50);
+  border: var(--rule-hair);
   border-radius: var(--r-card); padding: var(--s5);
   animation: land var(--dur-base) var(--ease-out) both;
 }
 @keyframes land { from { opacity: 0; transform: translateY(14px); } }
 .card + .card { margin-top: var(--s4); }
-.card__label { font: var(--label); color: var(--text-on-paper-muted); margin-bottom: var(--s2); }
+/* Sentence case. An earlier pass set every label in tracked-out
+   capitals, which is decoration pretending to be structure — the rule
+   below the label is what actually separates it from its content. */
+.card__label {
+  font: var(--label); color: var(--text-on-paper-muted);
+  margin-bottom: var(--s2); letter-spacing: 0;
+}
 .card__title { font: var(--heading); margin-bottom: var(--s1); }
 
 /* ══ Evidence ladder glyph + word (§18.2) ════════════════════
@@ -221,13 +265,26 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 
 /* ══ Two Truths (§13.1) ══════════════════════════════════════ */
 .tt { padding: 0; overflow: hidden; }
+/* The person's own words. The only place the serif appears on this
+   card, which is what keeps it meaning "a human said this". */
 .tt__claim {
-  font: var(--display); padding: var(--s5) var(--s5) var(--s4);
-  border-bottom: 1px solid var(--paper-300);
+  font: var(--display); letter-spacing: -0.018em;
+  padding: var(--s6) var(--s5) var(--s5);
+  border-bottom: var(--rule-hair);
+  text-wrap: balance; max-width: 22ch;
 }
 .tt__entity { padding: var(--s4) var(--s5); border-bottom: 1px solid var(--paper-300); }
+/* Side by side is the idea, but two columns inside 390px makes both
+   of them unreadable, and a record nobody can read proves nothing. So
+   the card stacks on a phone — record first — and takes the asymmetric
+   two-column setting from 480px up. The share image is 1080 wide and
+   always shows them side by side, which is where that comparison does
+   its real work anyway. */
 .tt__cols { display: grid; grid-template-columns: 1fr; }
-@media (min-width: 360px) { .tt__cols { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 480px) {
+  .tt__cols { grid-template-columns: 1.18fr 1fr; }
+  .tt__col--field { padding-left: var(--s5); border-left: var(--rule-hair); border-top: 0; }
+}
 .tt__col { padding: var(--s4) var(--s5); min-width: 0; }
 @media (max-width: 480px) {
   .tt__col { padding: var(--s3) var(--s3); }
@@ -242,27 +299,74 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 }
 .tt__colhead {
   font: var(--label); color: var(--text-on-paper-muted);
-  letter-spacing: 0.06em; margin-bottom: var(--s3);
+  letter-spacing: 0; margin-bottom: var(--s3);
+  padding-bottom: var(--s2); border-bottom: var(--rule-heavy);
 }
-.tt__quote { font: var(--quote); font-style: italic; margin-bottom: var(--s3); }
+/* Only the record side is ruled. The rules are not decoration: they
+   are what makes it read as a filed return rather than a paragraph. */
+.tt__col--record .tt__rec { border-bottom: var(--rule-hair); }
+@media (min-width: 480px) { .tt__col--record { padding-right: var(--s5); } }
+.tt__rec {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s3);
+  align-items: baseline; padding: var(--s3) 0;
+}
+/* Stacked: the label sits above its value, the way a completed form
+   reads, and nothing has to wrap inside a narrow cell. */
+.tt__rec--block { grid-template-columns: 1fr; gap: var(--s1); }
+.tt__rec--block .tt__rec-val { text-align: left; }
+.tt__rec-key { font: var(--label); color: var(--text-on-paper-muted); }
+.tt__rec-val { font: var(--bodysm); text-align: right; min-width: 0; }
+@media (max-width: 479px) {
+  /* On a phone every row stacks — side-by-side buys nothing once the
+     column is the full width of the screen. */
+  .tt__rec { grid-template-columns: 1fr; gap: var(--s1); }
+  .tt__rec-val { text-align: left; }
+}
+/* The record's own wording, quoted. Set in the grotesque, indented
+   behind a heavy rule — filed, not literary. The serif is reserved
+   for the person. */
+.tt__verbatim {
+  font: var(--bodysm); padding: var(--s2) 0 var(--s3) var(--s3);
+  border-left: var(--rule-heavy); margin-bottom: var(--s3);
+}
+.tt__quote { font: var(--said); margin-bottom: var(--s3); }
 .tt__row { font: var(--bodysm); margin-bottom: var(--s2); }
+/* Soft corners because it is a photograph, against the record's
+   square ones. You can tell the two columns apart with the screen
+   upside down. */
+/* `cover` was cropping the bottom of the fixture plate, which is
+   where its "not a real photograph" label lives. Nothing may crop an
+   honesty label, so the whole frame is shown on its own plate. */
 .tt__photo {
-  border-radius: var(--r-img); border: 1px solid var(--paper-300);
-  margin-bottom: var(--s3); width: 100%; height: 132px; object-fit: cover;
-  object-position: center 62%;   /* the building, not the sky */
+  border-radius: var(--r-photo); border: var(--rule-hair);
+  margin-bottom: var(--s3); width: 100%; height: auto;
+  max-height: 210px; object-fit: contain;
+  background: var(--paper-200);
 }
+.tt__col--field { border-top: var(--rule-hair); }
+/* Left-ruled like a mark in a document's margin, not a centred
+   banner. This is the one bold element on the card; everything around
+   it stays quiet. */
 .tt__verdict {
-  display: flex; flex-direction: column; align-items: center; gap: var(--s2);
-  padding: var(--s5); text-align: center;
-  border-top: 1px solid var(--paper-300); border-bottom: 1px solid var(--paper-300);
-  background: var(--paper-100);
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2);
+  padding: var(--s5) var(--s5) var(--s5) calc(var(--s5) - 3px);
+  text-align: left;
+  border-top: var(--rule-hair); border-bottom: var(--rule-hair);
+  border-left: 3px solid currentColor;
+  background: var(--paper-200);
 }
-.tt__verdict-note { font: var(--bodysm); color: var(--text-on-paper-muted); max-width: 34ch; }
+.tt__verdict .state--lg { letter-spacing: 0.01em; }
+.tt__verdict-note { font: var(--bodysm); color: var(--text-on-paper-muted); max-width: 38ch; }
 .tt__lists { padding: var(--s5); display: flex; flex-direction: column; gap: var(--s5); }
 .tt__list h4 { font: var(--label); color: var(--text-on-paper-muted); letter-spacing: 0.04em; margin-bottom: var(--s2); }
 .tt__list ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
-.tt__list li { font: var(--bodysm); padding-left: var(--s4); position: relative; }
-.tt__list li::before { content: '·'; position: absolute; left: var(--s2); }
+.tt__list li {
+  font: var(--bodysm); padding-left: var(--s4); position: relative;
+}
+.tt__list li::before {
+  content: ''; position: absolute; left: 0; top: 0.72em;
+  width: 9px; height: 0; border-top: var(--rule-hair);
+}
 /* The differ block arrives last, alone, in silence. §10.3 */
 .tt__list--differ { animation: land var(--dur-base) var(--ease-out) 240ms both; }
 .tt__was { text-decoration: line-through; color: var(--slate-700); font: var(--label); }
@@ -278,23 +382,29 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 .btn {
   border-radius: var(--r-chip); padding: var(--s3) var(--s4);
   font: 500 16px/24px var(--font-ui); text-align: center;
-  border: 1px solid var(--paper-300); background: var(--paper-50);
+  border: var(--rule-hair); background: var(--paper-50);
   color: var(--text-on-paper);
 }
-.btn--primary { background: var(--teal-800); color: var(--paper-50); border-color: var(--teal-800); }
+.btn--primary {
+  background: var(--text-on-paper); color: var(--paper-50);
+  border-color: var(--text-on-paper);
+}
 .btn--ghost { background: transparent; }
 .btn--danger { color: var(--state-conflicting-ink); border-color: var(--state-conflicting); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-row { display: flex; flex-wrap: wrap; gap: var(--s2); }
 
 /* ══ Honest labels (§12.14) ══════════════════════════════════ */
+/* A stamped notice: ruled box, letter-spaced, the way a duplicate
+   form is overprinted. Not a rounded toast. */
 .ribbon {
-  display: flex; align-items: center; gap: var(--s2);
-  background: color-mix(in srgb, var(--amber-500) 14%, transparent);
-  color: var(--amber-700); font: var(--label);
-  padding: var(--s2) var(--s4); border-radius: var(--r-chip);
-  margin-bottom: var(--s4);
+  display: inline-flex; align-items: center; gap: var(--s2);
+  background: transparent;
+  color: var(--amber-700); font: var(--label); letter-spacing: 0.04em;
+  border: 1px solid currentColor; border-radius: 0;
+  padding: var(--s1) var(--s3); margin-bottom: var(--s4);
 }
+.ribbon > [aria-hidden] { display: none; }
 
 /* ══ Clue rows (§12.8) ═══════════════════════════════════════ */
 .clue { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) 0;
@@ -307,27 +417,38 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 .clue__del { color: var(--state-conflicting-ink); font: var(--label); min-height: 44px; }
 
 /* ══ Draft studio (§15.5) ════════════════════════════════════ */
+/* The draft is shown on its own sheet, with the generous measure and
+   leading of something meant to be read by a stranger — not in a
+   textarea that looks like a form field. */
 .draft-body {
-  background: var(--paper-50); border: 1px solid var(--paper-300);
-  border-radius: var(--r-card); padding: var(--s5);
-  font: var(--body); white-space: pre-wrap; min-height: 240px; width: 100%;
-  resize: vertical;
+  background: var(--paper-50); border: var(--rule-hair);
+  border-top: var(--rule-heavy);
+  border-radius: var(--r-record); padding: var(--s6) var(--s5);
+  font: var(--body); line-height: 1.62;
+  white-space: pre-wrap; min-height: 260px; width: 100%;
+  resize: vertical; max-width: 62ch;
 }
-.draft-body--letter { font: var(--quote); font-style: normal; }
+.draft-body--letter { font: var(--body); }
 .field { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) 0; }
 .field label { font: var(--bodysm); }
 .field input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--teal-800); }
 
 /* ══ Disclosure (§22) ════════════════════════════════════════ */
-.disc__row { display: flex; gap: var(--s3); padding: var(--s3) 0;
-             border-bottom: 1px solid var(--paper-300); align-items: flex-start; }
+.disc__row { display: flex; gap: var(--s4); padding: var(--s4) 0;
+             border-bottom: var(--rule-hair); align-items: flex-start; }
+/* An excluded row is visibly quieter than an included one, so the
+   shape of what goes out is legible before any of it is read. */
+.disc__row:has(.disc__mark--out) { opacity: 0.72; }
 .disc__mark { font: var(--heading); flex: none; width: 22px; }
 .disc__mark--in { color: var(--state-verified-ink); }
 .disc__mark--out { color: var(--slate-700); }
 .disc__body { flex: 1; display: flex; flex-direction: column; gap: var(--s2); }
+/* Non-dismissible, and set to look like a condition of use rather
+   than a tip. */
 .disc__honesty {
-  background: var(--paper-200); border-radius: var(--r-chip);
-  padding: var(--s4); font: var(--bodysm); margin: var(--s4) 0;
+  background: transparent; border-left: var(--rule-heavy);
+  border-radius: 0; padding: var(--s2) 0 var(--s2) var(--s4);
+  font: var(--bodysm); margin: var(--s5) 0; max-width: 44ch;
 }
 
 /* ══ Case receipt (§13.3) ════════════════════════════════════ */
@@ -336,7 +457,10 @@ button, [role="button"], select, summary { min-height: var(--touch); }
   padding: var(--s6); background: var(--paper-50);
   display: flex; flex-direction: column; gap: var(--s3);
 }
-.receipt__id { font: 400 28px/32px var(--font-mono); letter-spacing: 0.06em; }
+.receipt__id {
+  font: 600 30px/34px var(--font-num); letter-spacing: 0.10em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
 .receipt__k { font: var(--label); color: var(--text-on-paper-muted); }
 .receipt__note { font: var(--bodysm); color: var(--text-on-paper-muted); margin-top: var(--s2); }
 
@@ -346,7 +470,7 @@ button, [role="button"], select, summary { min-height: var(--touch); }
   text-align: left; padding: var(--s4) 0; border-bottom: 1px solid var(--paper-300);
 }
 .case-row__top { display: flex; justify-content: space-between; gap: var(--s3); align-items: baseline; }
-.case-row__id { font: var(--mono); color: var(--text-on-paper-muted); }
+.case-row__id { font: var(--datum); font-feature-settings: var(--num-feat); color: var(--text-on-paper-muted); }
 
 /* ══ Sheet (§12.13) — depth is capped at one. ════════════════ */
 .sheet-scrim {
@@ -396,8 +520,9 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 }
 .companion__say {
   font: var(--label); color: var(--text-on-paper);
-  background: var(--paper-50); border: 1px solid var(--paper-300);
-  border-radius: var(--r-card); padding: var(--s2) var(--s3);
+  background: linear-gradient(var(--veil-paper), var(--veil-paper)), var(--paper-50);
+  border: var(--rule-hair); border-left: 2px solid var(--amber-500);
+  border-radius: 0 var(--r-card) var(--r-card) 0; padding: var(--s2) var(--s3);
   animation: rise var(--dur-base) var(--ease-out) both;
   max-width: min(60vw, 260px);
   max-height: 76px; overflow: hidden;

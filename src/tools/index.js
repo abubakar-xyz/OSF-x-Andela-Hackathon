@@ -15,6 +15,15 @@
 import { deriveState, downgradeForFailure } from '../evidence/ladder.js';
 import { makeFact, nowISO, acceptEvidence, acceptRoute } from '../evidence/types.js';
 
+/* Dates are stored ISO so they sort and validate. Nobody should ever
+   read "2023-03-14" off a card, so anything written into prose that a
+   person reads goes through here first. */
+const said = (iso) => {
+  const d = new Date(`${String(iso).slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(+d) ? String(iso)
+    : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+};
+
 /** §8.4 — plain-language mote labels. Never the function name. */
 export const MOTE_LABEL = {
   resolve_jurisdiction:      'Finding the area',
@@ -204,7 +213,8 @@ export function verify_claim({ claim, entity, records, sources, fieldEvidence = 
   if (entity) agreements.push(`A project of this name exists in ${entity.admin1}, ${entity.sector} sector.`);
   if (completion && fieldContradicts) {
     differences.push(
-      `Record: ${completion.value} (${completion.published_at}) · Your photo: incomplete (${field[0]?.fact?.as_of ?? 'undated'})`);
+      `The record says ${String(completion.value).toLowerCase()}, filed ${said(completion.published_at)}. ` +
+      `Your photograph of ${said(field[0]?.fact?.as_of)} does not appear to show that.`);
   }
   if (auditContradicts) {
     differences.push('An audit observation says completion could not be confirmed and payment certificates were not produced.');
@@ -283,8 +293,8 @@ export function challenge_finding(payload, pack, { online = false } = {}) {
     /* The conflict dissolves into an ordinary reported status: the older
        completion claim was superseded, not contradicted. */
     state = 'REPORTED';
-    note = `A newer notice (${r.published_at}) varies the scope and moves completion. ` +
-           `The 2023 completion claim it replaces is no longer the current record.`;
+    note = `A newer notice, filed ${said(r.published_at)}, varies the scope and moves completion. ` +
+           `The earlier completion claim it replaces is no longer the current record.`;
   }
   if (lookalikes.length) {
     checks.push(`Similar name in the same sub-county: ${lookalikes.map((e) => e.name).join(', ')} — mistaken identity is possible.`);

@@ -7,11 +7,13 @@
  * is missing Wazi says so instead of pretending.
  */
 
-const CACHE = 'wazi-v2';
+const CACHE = 'wazi-v3';
 
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './src/styles/tokens.css', './src/styles/app.css', './src/styles/print.css',
+  './assets/fonts/archivo-latin.woff2', './assets/fonts/archivo-latin-ext.woff2',
+  './assets/fonts/fraunces-latin.woff2', './assets/fonts/fraunces-latin-ext.woff2',
   './src/app.js',
   './src/core/dom.js', './src/core/bus.js', './src/core/machine.js',
   './src/core/store.js', './src/core/sound.js', './src/core/net.js',

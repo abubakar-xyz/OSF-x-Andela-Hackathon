@@ -85,14 +85,14 @@ console.log('   verdict now:', v2, '| "was" shown:', was > 0);
 await step('06-overturned');
 
 console.log('6. take action');
-await page.getByRole('button', { name: 'Take action →' }).click();
+await page.getByRole('button', { name: 'Take action' }).click();
 await page.waitForTimeout(2000);
 console.log('   state:', await page.evaluate(() => __wazi.machine.state));
 console.log('   office:', await page.locator('.card__title').first().textContent());
 await step('07-draft');
 
 console.log('7. disclosure');
-await page.getByRole('button', { name: 'Review what’s shared →' }).click();
+await page.getByRole('button', { name: 'Review what’s shared' }).click();
 await page.waitForTimeout(600);
 console.log('   state:', await page.evaluate(() => __wazi.machine.state));
 console.log('   rows:', await page.locator('.disc__row').count());

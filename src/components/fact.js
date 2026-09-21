@@ -14,11 +14,21 @@ export const isDev = () =>
   typeof location !== 'undefined' &&
   /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 export function formatValue(fact) {
   const { value, unit } = fact;
   if (typeof value === 'number') {
     const n = value.toLocaleString('en-KE');
     return unit ? `${unit} ${n}` : n;
+  }
+  /* A record's date is stored ISO so it sorts and validates; nobody
+     should ever read "2023-03-14" off a card. */
+  if (typeof value === 'string' && ISO_DATE.test(value)) {
+    const d = new Date(`${value}T00:00:00Z`);
+    if (!Number.isNaN(+d)) {
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+    }
   }
   return unit ? `${value} ${unit}` : String(value);
 }

@@ -123,3 +123,30 @@ now a separate Day value. Found by `npm run check:contrast` after adding focus p
 
 **E. `--amber-700` failed 4.5:1 on paper**, which also put the REPORTED state word below AA.
 Darkened to `#8A5F0A`.
+
+## 10. Visual direction: the register and the snapshot
+
+**Context** A design review against Anthropic's `frontend-design` skill, now vendored at
+`.claude/skills/frontend-design/SKILL.md`.
+**Finding** The Day side was warm cream `#F7F3E8` under a high-contrast serif display — the
+skill names that exact combination as the commonest look a generator produces. The product
+also carried four more of the listed tells: tracked-out ALL-CAPS eyebrows above every heading,
+meta strings joined with middle dots, `→` appended to button labels, and identical rounded
+cards with one radius and the same shadow. None of those were decisions. They were defaults.
+**Decision** Rebuilt the palette and typography around the two objects this product actually
+sits between: **the project signboard** and **the government duplicate form**. Register
+green-grey `#E4E9E1` instead of cream; rubber-stamp red instead of terracotta; Archivo (a
+signage grotesque) and Fraunces, with the serif reserved for a person's own words and never
+used for the system's voice or for the record's filed wording. Radius now encodes meaning —
+a record has square corners, a photograph has soft ones. Depth comes from a hairline and a
+translucent fill; Day has no `box-shadow` at all.
+**Why** Every one of those choices is traceable to the subject matter rather than to a
+template, which is the difference the brief is paying for. It also fixed real defects found
+on the way: raw ISO dates were leaking into prose a person reads, a long audit observation
+was being forced into a right-aligned table cell, and the photo crop was cutting off the
+"not a real photograph" label — an honesty label that must never be croppable.
+**Evidence** `npm run check:contrast` passes all 25 pairings on the new tokens. JS is 69.7 KB
+gzipped against the 180 KB budget; total first load 186 KB against 400 KB, and 88 KB on the
+light tier, which requests no webfonts at all.
+**Reversible** Yes — the whole palette is nine tokens in one file.
+

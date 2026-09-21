@@ -22,8 +22,8 @@ export function SourceChip(source, { onOpen } = {}) {
 
   const meta = failed
     ? `couldn't reach this source today — showing what I had on ${fmtDate(source.retrieved_at)}`
-    : `Published ${fmtDate(source.published_at)} · Checked ${relTime(source.retrieved_at)}` +
-      (stale ? ' · may be stale' : '');
+    : `Published ${fmtDate(source.published_at)}, checked ${relTime(source.retrieved_at)}` +
+      (stale ? ' — may be stale' : '');
 
   return el('button', {
     class: `src${stale ? ' src--stale' : ''}${failed ? ' src--failed' : ''}`,

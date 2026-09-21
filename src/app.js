@@ -282,7 +282,7 @@ function showEvidence() {
 
 function collapsible(label, build) {
   const details = el('details', { style: { marginTop: '16px' } },
-    el('summary', { class: 'card__label', text: label.toUpperCase() }));
+    el('summary', { class: 'card__label', text: label }));
   details.addEventListener('toggle', () => {
     if (details.open && details.children.length === 1) details.append(build());
   }, { once: false });
@@ -693,7 +693,7 @@ function showSafety() {
         text: 'Wazi is not an emergency service and cannot send help. These are pre-verified routes. ' +
               'If you are in immediate danger, use them now.' }),
       el('article', { class: 'card', style: { marginTop: '16px' } },
-        el('p', { class: 'card__label', text: 'KENYA' }),
+        el('p', { class: 'card__label', text: 'Kenya' }),
         el('p', { class: 'tt__row', text: 'Police emergency — 999 / 112' }),
         el('p', { class: 'tt__row', text: 'Gender Violence Recovery Centre helpline — 1195' }),
         el('p', { class: 'tt__checked', text: 'Verify these against your own local guidance before relying on them.' })),

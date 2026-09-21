@@ -11,7 +11,7 @@ import { el, fmtDate, relTime } from '../core/dom.js';
 import { Fact } from './fact.js';
 import { StateGlyph } from './stateGlyph.js';
 import { SourceChip } from './sourceChip.js';
-import { DEFINITION } from '../evidence/ladder.js';
+import { DEFINITION, WORD } from '../evidence/ladder.js';
 import { sourceIndex, hasFixture } from '../evidence/types.js';
 import { Ribbon } from './ribbon.js';
 import { openSheet } from './sheet.js';
@@ -32,7 +32,8 @@ export function TwoTruths(payload, {
   const entity = el('div', { class: 'tt__entity' },
     el('h3', { class: 'card__title', text: payload.entity.name }),
     el('p', { class: 'card__label',
-      text: [payload.entity.admin2, payload.entity.admin1, payload.entity.sector].filter(Boolean).join(' · ') }),
+      text: [payload.entity.admin2, payload.entity.admin1].filter(Boolean).join(', ') }),
+    el('p', { class: 'card__label', text: `${payload.entity.sector ?? ''} sector`.trim() }),
   );
   /* Mistaken identity is expected. Always offer the way out. §17 */
   if (payload.alternatives?.length) {
@@ -53,26 +54,35 @@ export function TwoTruths(payload, {
   card.append(entity);
 
   /* ── The two faces ───────────────────────────────────────────── */
-  const recordCol = el('div', { class: 'tt__col' },
-    el('h4', { class: 'tt__colhead', text: 'WHAT THE RECORD SAYS' }));
+  const recordCol = el('div', { class: 'tt__col tt__col--record' },
+    el('h4', { class: 'tt__colhead', text: 'The record' }));
 
   for (const r of payload.record) {
     /* Exact official wording, verbatim, in quotation marks. Never
        paraphrased, never summarised. §13.1 */
     if (r.verbatim && r.claim_type === 'reported_completion' && r.label === 'Project status') {
-      recordCol.append(el('blockquote', { class: 'tt__quote', text: `“${r.verbatim}”` }));
+      /* The record's own wording, quoted but NOT in the serif — the
+         serif is reserved for what a person said. This is filed
+         language, and it should look filed. */
+      recordCol.append(el('blockquote', { class: 'tt__verbatim', text: `“${r.verbatim}”` }));
       continue;
     }
-    recordCol.append(el('p', { class: 'tt__row' },
-      el('span', { class: 'card__label', text: `${r.label}  ` }),
-      Fact(r.fact, sources, { onSource: openSource, showState: false }),
+    /* A short value sits beside its label like a form field; a long
+       one — an audit observation, say — is a paragraph and has to be
+       allowed to be one. Forcing it into a right-aligned cell is what
+       made the register column unreadable on a phone. */
+    const long = String(r.fact.value ?? '').length > 24;
+    recordCol.append(el('div', { class: `tt__rec${long ? ' tt__rec--block' : ''}` },
+      el('span', { class: 'tt__rec-key', text: r.label }),
+      el('span', { class: 'tt__rec-val' },
+        Fact(r.fact, sources, { onSource: openSource, showState: false })),
     ));
   }
   const recSources = payload.sources.filter((s) => s.tier !== 'user');
   for (const s of recSources) recordCol.append(SourceChip(s, { onOpen: openSource }));
 
-  const fieldCol = el('div', { class: 'tt__col' },
-    el('h4', { class: 'tt__colhead', text: 'WHAT YOU SHOWED ME' }));
+  const fieldCol = el('div', { class: 'tt__col tt__col--field' },
+    el('h4', { class: 'tt__colhead', text: 'What you showed me' }));
   if (photoSrc) {
     fieldCol.append(el('img', {
       class: 'tt__photo', src: photoSrc, width: '320', height: '240', loading: 'lazy',
@@ -81,7 +91,7 @@ export function TwoTruths(payload, {
   }
   for (const f of payload.field) {
     fieldCol.append(el('p', { class: 'tt__row' },
-      el('span', { class: 'card__label', text: `${f.label}: ` }),
+      el('span', { class: 'tt__rec-key', text: `${f.label} ` }),
       Fact(f.fact, sources, { onSource: openSource, showState: false }),
     ));
   }
@@ -102,7 +112,8 @@ export function TwoTruths(payload, {
   if (payload.previous_state && payload.previous_state !== payload.evidence_state) {
     /* Never hide a revision. A product seen correcting itself is trusted
        more than one never seen to be wrong. §20 */
-    verdict.append(el('p', { class: 'tt__was', text: `was: ${payload.previous_state}` }));
+    verdict.append(el('p', { class: 'tt__was',
+      text: `was: ${WORD[payload.previous_state] ?? payload.previous_state}` }));
     if (payload.revision_note) {
       verdict.append(el('p', { class: 'tt__verdict-note', text: payload.revision_note }));
     }
@@ -125,7 +136,7 @@ export function TwoTruths(payload, {
     el('p', { class: 'tt__checked', text: `Last checked ${relTime(payload.retrieved_at)}` }),
     el('div', { class: 'tt__actions' },
       el('button', { class: 'btn', type: 'button', text: 'Check again', onclick: () => onCheckAgain?.() }),
-      el('button', { class: 'btn btn--primary', type: 'button', text: 'Take action →', onclick: () => onTakeAction?.() }),
+      el('button', { class: 'btn btn--primary', type: 'button', text: 'Take action', onclick: () => onTakeAction?.() }),
       el('button', { class: 'btn btn--ghost', type: 'button', text: 'Share as image', onclick: () => onShare?.() }),
       el('button', { class: 'btn btn--ghost', type: 'button', text: 'Save case', onclick: () => onSave?.() }),
     ),

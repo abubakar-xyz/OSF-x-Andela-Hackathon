@@ -15,7 +15,10 @@ export function StateGlyph(state, { size = 20, large = false, onExplain } = {}) 
       class: 'state__glyph', 'aria-hidden': 'true',
       html: `<svg viewBox="0 0 20 20" width="${size}" height="${size}">${GLYPH_PATH[state] ?? GLYPH_PATH.UNKNOWN}</svg>`,
     }),
-    el('span', { text: word.toUpperCase() }),
+    /* The word is set in sentence case and given its weight by the
+       glyph and the rule beside it. Shouting it in capitals is template
+       chrome, and all-caps also mangles diacritics. */
+    el('span', { text: word }),
   );
   return node;
 }

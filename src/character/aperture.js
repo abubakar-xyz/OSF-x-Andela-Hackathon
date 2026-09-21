@@ -15,13 +15,13 @@ const NS = 'http://www.w3.org/2000/svg';
 export const STATES = {
   dormant:   { openness: 0.00, energy: 0.00, spin: 0,    breathe: 0,    core: 'amber', dim: 0.35 },
   waking:    { openness: 1.00, energy: 0.40, spin: 0,    breathe: 0,    core: 'amber', dim: 1.00 },
-  resting:   { openness: 0.55, energy: 0.17, spin: 0,    breathe: 0.05, core: 'amber', dim: 1.00 },
+  resting:   { openness: 0.74, energy: 0.17, spin: 0,    breathe: 0.05, core: 'amber', dim: 1.00 },
   listening: { openness: 1.00, energy: 0.25, spin: 0,    breathe: 0,    core: 'amber', dim: 1.00 },
   hearing:   { openness: 1.00, energy: null, spin: 0,    breathe: 0,    core: 'amber', dim: 1.00 },
   thinking:  { openness: 0.30, energy: 0.15, spin: 0.06, breathe: 0,    core: 'amber', dim: 0.70 },
   working:   { openness: 0.30, energy: 0.15, spin: 0.06, breathe: 0,    core: 'amber', dim: 0.70 },
-  speaking:  { openness: 0.72, energy: null, spin: 0,    breathe: 0,    core: 'amber', dim: 1.10 },
-  awaiting:  { openness: 0.45, energy: 0.00, spin: 0,    breathe: 0,    core: 'hollow', dim: 1.00 },
+  speaking:  { openness: 0.80, energy: null, spin: 0,    breathe: 0,    core: 'amber', dim: 1.10 },
+  awaiting:  { openness: 0.58, energy: 0.00, spin: 0,    breathe: 0,    core: 'hollow', dim: 1.00 },
   attention: { openness: 0.60, energy: 0.00, spin: 0,    breathe: 0,    core: 'amber', dim: 1.00 },
   offline:   { openness: 0.20, energy: 0.00, spin: 0,    breathe: 0,    core: 'slate', dim: 0.60 },
 };
@@ -172,8 +172,8 @@ export function createAperture({ size = 168, motes: showMotes = true, live = fal
     leaf.setAttribute('fill', '#0E8E7F');
     /* Overlapping blades in one flat colour merge into a solid ring —
        a hairline edge is what makes it read as six blades. */
-    leaf.setAttribute('stroke', '#071820');
-    leaf.setAttribute('stroke-width', '0.9');
+    leaf.setAttribute('stroke', '#050D0F');
+    leaf.setAttribute('stroke-width', '1.15');
     leaf.setAttribute('stroke-linejoin', 'round');
     leafGroup.appendChild(leaf);
     leaves.push(leaf);
@@ -256,7 +256,10 @@ export function createAperture({ size = 168, motes: showMotes = true, live = fal
         const a = i * (360 / LEAF_COUNT) + twist + cur.spinAngle;
         leaves[i].setAttribute('transform', `rotate(${a.toFixed(2)}) translate(0,${(-push).toFixed(2)})`);
         leaves[i].setAttribute('fill', leafFill);
-        leaves[i].setAttribute('opacity', leafOp.toFixed(3));
+        /* Alternating blades sit very slightly back, the way light
+           falls across a real diaphragm. Without it six overlapping
+           blades in one flat colour read as a single disc. */
+        leaves[i].setAttribute('opacity', (leafOp * (i % 2 ? 0.86 : 1)).toFixed(3));
       }
 
       /* When the blades close over the core the glow must go with it,

@@ -49,7 +49,7 @@ export function DraftStudio({ payload, route, routeSources, caseId, user, disclo
 
   const reviewBtn = el('button', {
     class: 'btn btn--primary', type: 'button', style: { width: '100%' },
-    text: 'Review what’s shared →',
+    text: 'Review what’s shared',
     onclick: () => state.body && onReview?.({ ...state.body, body: textarea.value }),
   });
 
@@ -90,7 +90,7 @@ export function DraftStudio({ payload, route, routeSources, caseId, user, disclo
     el('div', { style: { marginTop: '16px' } }, textarea),
     bodyHost,
     toneRow.el, lenRow.el,
-    el('p', { class: 'card__label', style: { marginTop: '16px' }, text: 'ATTACH' }),
+    el('p', { class: 'card__label', style: { marginTop: '16px' }, text: 'Attach' }),
     attachRow,
     el('div', { style: { marginTop: '24px' } }, reviewBtn),
   );

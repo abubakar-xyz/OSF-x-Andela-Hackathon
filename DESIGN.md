@@ -628,104 +628,134 @@ There is no spinner, anywhere, ever. Three progress idioms only:
 
 ## 11. Design tokens **[SPEC]**
 
+> **Revised after a design review.** The first version of this section specified a warm cream
+> surface (`#F7F3E8`) with a high-contrast serif display. That combination is the single
+> commonest look a generator reaches for, it says nothing about civic records, and it had
+> spread through the whole Day side. The direction below replaces it. `DECISIONS.md` #10.
+
 Copy these literally into `src/styles/tokens.css`. Nothing in the product uses a raw hex value.
 
-### 11.1 Colour
+### 11.1 Direction — the register and the snapshot
+
+The vernacular is not editorial print. It is **the project signboard** (a highway grotesque,
+set in capitals, high contrast, bolted to a post) and **the government duplicate form** (ruled
+rows, reference numbers, green-tinted NCR paper). Those are the two objects this product sits
+between, and they are where its visual language comes from.
+
+The card's whole job is to hold two kinds of knowing next to each other, so **form encodes
+epistemology**:
+
+| | The record | What you showed me |
+|---|---|---|
+| Corner radius | `0` — it is a document | `10px` — it is a photograph |
+| Structure | ruled rows, tabular figures | unruled, airy |
+| Density | tight | open |
+| Measure | wider (1.18fr) | narrower (1fr) |
+
+You can tell the two columns apart with the screen upside down. That is the test.
+
+### 11.2 Colour
 
 ```css
 :root {
-  /* ─── Night (companion side) ─────────────────────────────── */
-  --ink-900: #05121A;   /* deepest, behind paper during world-shift */
-  --ink-800: #071820;   /* Night base surface                       */
-  --ink-700: #0D2530;   /* raised night surface, camera scrim       */
-  --ink-600: #14333F;   /* night dividers                           */
-  --ink-500: #1E4453;   /* night disabled / inactive                */
+  /* Night — green-shifted black, not a tinted near-black. Two accents,
+     not one: the lamp is the character, the signal is the optics. */
+  --ink-900: #050D0F;
+  --ink-800: #0A1416;   --ink-700: #10201F;
+  --ink-600: #1A2E2C;   --ink-500: #26403C;
 
-  /* ─── Day (record side) ──────────────────────────────────── */
-  --paper-50:  #FDFBF5; /* card face                                */
-  --paper-100: #F7F3E8; /* Day base surface                         */
-  --paper-200: #EFE9D9; /* subtle fill, table zebra                 */
-  --paper-300: #E2DAC6; /* hairlines, borders                       */
+  /* Day — the colour of a duplicate government form, not paper stock. */
+  --paper-50:  #F2F4F0;   /* bond — the card face    */
+  --paper-100: #E4E9E1;   /* register — base surface */
+  --paper-200: #D8DFD4;   --paper-300: #C4CEC0;
 
-  /* ─── Text ───────────────────────────────────────────────── */
-  --text-on-ink:        #EAF2F0;  /* body on Night                  */
-  --text-on-ink-muted:  #9FB4B8;  /* captions on Night              */
-  --text-on-paper:      #0A1F27;  /* body on Day                    */
-  --text-on-paper-muted:#47606B;  /* captions, source lines on Day  */
+  --text-on-ink:         #E8EFEA;   --text-on-ink-muted:   #94A9A4;
+  --text-on-paper:       #111E1C;   --text-on-paper-muted: #46575A;
 
-  /* ─── Accents. LIGHT RAMP = DARK SURFACES ONLY. ──────────── */
-  --teal-400:  #5BE0CF;
-  --teal-500:  #16C6B1;  /* live, listening, links on ink           */
-  --teal-700:  #0E8E7F;
-  --teal-800:  #0B6F63;  /* teal TEXT on paper — never use 500 here */
+  --teal-500:  #17C7B2;   /* signal — live, listening, optics */
+  --teal-800:  #0E7569;   /* teal TEXT on paper               */
+  --amber-500: #F2B23E;   /* lamp — the aperture core         */
+  --amber-700: #856222;   /* amber TEXT on paper              */
 
-  --amber-400: #FFD37A;
-  --amber-500: #F4B942;  /* Wazi's core. The thread between worlds. */
-  --amber-700: #9C6B0C;  /* amber TEXT on paper                     */
+  --state-verified:     #3FBF86;  --state-verified-ink:     #267552;
+  --state-corroborated: #17C7B2;  --state-corroborated-ink: #0E7569;
+  --state-reported:     #F2B23E;  --state-reported-ink:     #856222;
+  --state-conflicting:  #B5352B;  --state-conflicting-ink:  #B5352B;
+  --state-unknown:      #78909A;  --state-unknown-ink:      #596B72;
 
-  /* ─── Evidence states. Word + glyph always accompany. ────── */
-  --state-verified:      #4BCB91;  --state-verified-ink:      #1C6B46;
-  --state-corroborated:  #16C6B1;  --state-corroborated-ink:  #0B6F63;
-  --state-reported:      #F4B942;  --state-reported-ink:      #9C6B0C;
-  --state-conflicting:   #EC7067;  --state-conflicting-ink:   #9E2C24;
-  --state-unknown:       #78909A;  --state-unknown-ink:       #3E545E;
-
-  --slate-500: #78909A;
-  --slate-700: #47606B;
-
-  /* ─── Semantic ───────────────────────────────────────────── */
-  --focus-ring: #FFD37A;          /* amber, 3px, 2px offset, both worlds */
-  --danger:     #EC7067;
-  --scrim:      rgba(5,18,26,0.72);
+  --focus-ring:     #FFCF72;   /* Night */
+  --focus-ring-day: #0A3A40;   /* Day — amber on paper is 1.3:1 */
 }
 ```
 
-**The ramp rule, stated once and enforced:** the `400`/`500` steps are for dark surfaces and
-for fills. Any *text* on `paper` uses the `700`/`800` step or `--state-*-ink`. A CI check
-(`npm run check:contrast`) parses every `color`/`background` token pair used in the codebase and
-fails the build under **4.5:1** for text and **3:1** for meaningful non-text. Do not merge
-around it.
+`--state-conflicting` is **rubber-stamp red, not terracotta**, and it is allowed to appear at
+most once on a screen. Terracotta near `#D97757` is removed entirely.
 
-**Colour is never the only signal.** Every evidence state renders glyph + word + colour. A
-build-time lint (`no-color-only`) fails any component that reads `--state-*` without also
-rendering `<StateGlyph>` and its label.
+**Depth comes from a hairline and a translucent fill. Day has no `box-shadow` anywhere.**
+A card is a sheet of bond laid on the register, so it reads slightly lighter than what it sits
+on, with one rule and no drop shadow.
 
-### 11.2 Type **[SPEC]**
+**The ramp rule** — the `400`/`500` steps are for dark surfaces and for fills; any *text* on
+paper uses `700`/`800` or `--state-*-ink`. `npm run check:contrast` parses the shipped tokens
+and asserts 25 pairings, and fails the build below 4.5:1 for text and 3:1 for focus indicators.
 
-Two families. Night uses one; Day uses both.
+### 11.2b Type
 
-```
-UI / Night / all controls  →  Inter Variable      (wght 400–700)
-Records, headings on Day,
-direct quotes from sources →  Newsreader Variable (wght 400–600, opsz)
-```
-
-Newsreader earns its place: quoting an official record in a serif makes it *read as a record*,
-which is the entire point of the Two Truths card. It appears nowhere on the Night side.
+Two families, and **the split carries meaning rather than hierarchy**:
 
 ```
-display   34 / 38   Newsreader 600   -1.5% tracking   (Day headings, Two Truths claim)
-title     24 / 30   Newsreader 600   -1.0%
-heading   19 / 26   Inter 600        -0.5%
-body      16 / 24   Inter 400         0%             ← default, never smaller for content
-bodysm    15 / 22   Inter 400
-label     14 / 20   Inter 500        +0.5%           ← smallest text in the product
-quote     18 / 28   Newsreader 400 italic            (exact official wording)
-mono      15 / 22   IBM Plex Mono 400                (case IDs, reference numbers only)
+Fraunces  600, opsz 144   a HUMAN said this — the person's own words, and nothing else
+Archivo   400–700         the system, and the institution
 ```
 
-**Minimum type size anywhere in the product is 14px.** Source lines, dates, disclaimers and
-footnotes are 14px, not 12px. The brief called out "tiny source text" as an anti-pattern; this
-is the enforcement. If the source line does not fit, the layout is wrong, not the type size.
+Archivo is a signage grotesque, which is the genre a project signboard is actually set in.
+Fraunces appears on **at most two elements per screen**, which is what keeps it meaningful —
+and, critically, the *record's* verbatim wording is **not** set in it. Filed language should
+look filed: it is set in Archivo, indented behind a heavy rule. An earlier version put both
+the person's claim and the record's wording in the serif, which flattened exactly the
+distinction this product exists to make.
 
-No ALL CAPS in content. Sentence case everywhere. (All-caps slows reading for users with lower
-literacy and mangles diacritics in Yoruba and Amharic.)
+Neither face is Inter or Roboto.
 
-**Loading strategy:** system stack renders first (`-apple-system, Roboto, "Segoe UI", sans-serif`),
-variable fonts subset to Latin + Latin-Ext + the Yoruba/Hausa diacritic block, `woff2`,
-`font-display: swap`, **≤38 KB total**. On `saveData` or `effectiveType` ≤ `2g`, webfonts are
-**not requested at all** and the system stack is final. Metric-compatible fallback overrides
-(`size-adjust`) prevent layout shift.
+```
+display  600 33/35  Fraunces   -1.8% tracking   the person's claim
+said     600 19/27  Fraunces                    the person's other words
+title    600 23/28  Archivo
+heading  600 18/25  Archivo
+body     400 16/25  Archivo    ← default, never smaller for content
+bodysm   400 15/23  Archivo
+label    500 14/20  Archivo    ← smallest text in the product
+datum    500 15/20  Archivo    tabular figures: case IDs, reference numbers
+```
+
+**Minimum type size anywhere is 14px.** No ALL CAPS in content — sentence case everywhere.
+All-caps slows reading at lower literacy and mangles Yoruba and Hausa diacritics, and a
+tracked-out capital label above every heading is decoration pretending to be structure. The
+rule below a label is what separates it from its content.
+
+Ruled register rows use `font-variant-numeric: tabular-nums lining-nums` so figures line up
+in their column.
+
+**Loading:** self-hosted `woff2`, latin + latin-ext only, **~98 KB for both families**, with
+`font-display: swap` behind a system stack. On `saveData` or `effectiveType ≤ 2g` the webfonts
+are **not requested at all** — a light-tier first load is 88 KB, fonts included by not being
+included.
+
+### 11.2c Treatments this product does not use
+
+Checked against the design review and removed:
+
+- tracked-out ALL-CAPS eyebrow labels above headings
+- meta strings joined with middle dots (`A · B · C`) — replaced with ruled rows and prose
+- `→` appended to button text
+- identical rounded cards with one radius and the same soft grey shadow
+- a warm cream ground under a high-contrast serif
+- accenting a single word in a headline
+- fade-and-slide entrances on every element — motion is spent on one orchestrated moment
+  (the world-shift) and one reveal (the verdict)
+
+Monospace figures survive in exactly one place: the case ID and reference numbers, which are
+genuinely machine tokens people read aloud and copy by hand.
 
 ### 11.3 Wordmark **[SPEC]**
 

@@ -30,7 +30,7 @@ export function CaseReceipt(kase) {
       kase.evidence_state ? StateGlyph(kase.evidence_state) : el('span', { text: '—' }),
       el('span', { class: 'clue__v',
         text: `${kase.source_count ?? 0} source${kase.source_count === 1 ? '' : 's'}` +
-              (kase.photo_count ? ` · ${kase.photo_count} photo` : '') }),
+              (kase.photo_count ? `, ${kase.photo_count} photo` : '') }),
     ),
     kase.routed_to ? row('Routed', kase.routed_to) : null,
     el('p', { class: 'receipt__note',
