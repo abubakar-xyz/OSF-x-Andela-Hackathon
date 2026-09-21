@@ -208,5 +208,41 @@ console.log('\nDrill 8 — a thin connection never downloads the 3D rig');
   await ctx.close();
 }
 
+console.log('\nDrill 9 — the app is whole without three.js at all');
+{
+  /* three.js is vendored at install time and gitignored, so a fresh
+     clone that skips `npm install` has no 3D rig. That must be an
+     absence, not a failure: blocking the request is the deterministic
+     way to assert it. */
+  const ctx = await browser.newContext({ viewport:{width:390,height:844} });
+  await ctx.route('**/assets/three/**', (r) => r.abort());
+  const page = await ctx.newPage();
+  const hard = [];
+  page.on('pageerror', e => hard.push(e.message));
+  await page.goto('http://localhost:4176/', { waitUntil:'networkidle' });
+  await page.waitForTimeout(400);
+  await page.locator('#cold button').first().click();
+  await page.waitForTimeout(3000);
+
+  const r = await page.evaluate(() => ({
+    mounted: Boolean(__wazi.aperture),
+    is3D: __wazi.aperture.is3D,
+    spoke: document.querySelectorAll('.cap-line').length > 0,
+  }));
+  chk('character still mounted', r.mounted);
+  chk('stays on the flat aperture', r.is3D === false);
+  chk('Wazi still speaks', r.spoke);
+  chk('no uncaught errors', hard.length === 0, hard[0]);
+
+  /* And the whole point: the journey still produces a verdict. */
+  await page.locator('#cameraBtn').click(); await page.waitForTimeout(350);
+  await page.getByRole('button',{name:'Use this signboard'}).click(); await page.waitForTimeout(450);
+  await page.getByRole('button',{name:'Check this'}).click();
+  const reached = await page.waitForFunction(()=>__wazi.machine.state==='evidence',null,{timeout:25000})
+    .then(()=>true).catch(()=>false);
+  chk('full journey still reaches a verdict', reached);
+  await ctx.close();
+}
+
 console.log(`\n${bad?bad+' check(s) failed':'all drills pass'}\n`);
 await browser.close(); server.close(); process.exit(bad?1:0);

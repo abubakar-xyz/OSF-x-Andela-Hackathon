@@ -14,8 +14,13 @@ Primary track: **Transparency & Accountability**. Secondary: **Safety, Reporting
 
 ```bash
 npm start          # http://localhost:4173
-npm run check      # pack validation + contrast gate + 34 tests — no install needed
+npm run check      # pack validation + contrast gate + 35 tests — no install needed
+
+npm install        # optional: adds the 3D avatar (vendors three.js into assets/)
 ```
+
+Without `npm install` you get the flat aperture and everything else works — that is the
+designed degradation, asserted by drill 9, not a broken state.
 
 No install step, no build step, no API key, no account. It is a static PWA — any file server
 will do. Voice runs on the browser's own speech engine, so it works offline.

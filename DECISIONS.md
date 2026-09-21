@@ -215,5 +215,13 @@ institution feel answerable, presence is worth the bytes. On a `full`-tier devic
 defensible trade; the mitigations are what keep it from being paid by the person who can least
 afford it.
 
-**Reversible** Entirely. Delete `avatar3d.js` and `assets/three/`, and `mountCharacter()`
-keeps returning the flat aperture with no other change.
+**Vendored at install, not committed.** The first version of this committed the three.js
+build into the repository, which added **80,305 lines to the pull request** and buried every
+real change in an unreviewable diff. `three` is now a pinned dependency, copied into
+`assets/three/` by `scripts/vendor-three.mjs` on `npm install`, and that directory is
+gitignored. Not a CDN, because the avatar has to work offline like the rest of the product and
+a civic tool should not depend on a third-party origin being reachable.
+
+**Reversible** Entirely. Delete `avatar3d.js` and drop the dependency, and `mountCharacter()`
+keeps returning the flat aperture with no other change. A clone that never runs `npm install`
+already behaves that way, which drill 9 asserts by blocking the request outright.

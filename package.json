@@ -13,13 +13,16 @@
     "verify:drills": "node tests/browser/drills.mjs",
     "verify:browser": "npm run verify:journey && npm run verify:drills",
     "relay": "node server/relay.mjs",
-    "dev": "node server/relay.mjs & python3 -m http.server 4173"
+    "dev": "node server/relay.mjs & python3 -m http.server 4173",
+    "vendor:three": "node scripts/vendor-three.mjs",
+    "postinstall": "node scripts/vendor-three.mjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0"
   },
   "dependencies": {
     "@google/genai": "^2.23.0",
-    "ws": "^8.21.3"
+    "ws": "^8.21.3",
+    "three": "^0.186.0"
   }
 }
