@@ -11,9 +11,15 @@
     "check:contrast": "node scripts/check-contrast.mjs",
     "verify:journey": "node tests/browser/journey.mjs",
     "verify:drills": "node tests/browser/drills.mjs",
-    "verify:browser": "npm run verify:journey && npm run verify:drills"
+    "verify:browser": "npm run verify:journey && npm run verify:drills",
+    "relay": "node server/relay.mjs",
+    "dev": "node server/relay.mjs & python3 -m http.server 4173"
   },
   "devDependencies": {
     "playwright": "^1.63.0"
+  },
+  "dependencies": {
+    "@google/genai": "^2.23.0",
+    "ws": "^8.21.3"
   }
 }

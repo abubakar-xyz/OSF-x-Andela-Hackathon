@@ -75,16 +75,41 @@ argument in §33). Separating identity from evidence is what makes "delete my de
 leave the case intact.
 **Reversible** Yes, and if it ever changes, `THREAT_MODEL.md` needs rewriting first.
 
-## 7. Model identifiers are capability-based config, not hard-coded
+## 7. Model identifiers — CORRECTED
 
-**Context** The director's brief named specific Gemini model versions.
-**Decision** `server/models.config.ts` in the specification; nothing hard-coded in application
-code. Step 1 of the build sequence is reading the real model list in the team's API project.
-**Why** The brief's identifiers could not be confirmed against official documentation from the
-build environment (`ai.google.dev` is blocked by the network egress proxy). Google's current
-Live API documentation describes native-audio realtime models with function calling and search
-grounding — the capability set we need — but a model ID nobody has called must never ship.
-**Reversible** Yes. Record the exact IDs and the date the list was read.
+**Original decision (wrong).** An earlier version of this entry said the brief's model
+identifiers "could not be confirmed against official documentation", because `ai.google.dev`
+is blocked by this environment's egress proxy, and concluded that model selection should stay
+abstract.
+
+**That was a failure of effort, not a limitation.** One blocked domain is not the end of the
+search. Google publishes its own `gemini-live-api-dev` skill on GitHub, which is reachable,
+authoritative and current. It is now vendored at
+`.claude/skills/gemini-live-api-dev/SKILL.md` and `migration.md`.
+
+**The brief was right.** Both models it named exist:
+
+| Model | Role |
+|---|---|
+| `gemini-3.8-live` | default for low-latency conversation; async function calling (`NON_BLOCKING`) is the default mode; no `thinking_level` |
+| `gemini-3.8-live-extended-thinking` | background reasoning during a live call, speaking natural conversational fillers while async tools run; `thinking_level` low/medium/high; `interaction_status` rather than `turnComplete` for idle |
+
+**Decision** Both are pinned in `server/models.config.mjs`, and the relay in
+`server/relay.mjs` is a real client against the documented protocol rather than a stub.
+
+**What this changed in the design.** The extended-thinking model speaks natural fillers while
+background tools run. That is the audible half of the motes in §8.4 — the design anticipated
+the shape ("turnComplete ≠ idle", §23.5) but assumed the narration would have to be ours.
+It does not: the model does it, and `interaction_status` is the exact signal §23.5 was
+describing without knowing its name.
+
+**Still unverified.** Nothing here has been run against a live key. The relay refuses to start
+without `WAZI_API_KEY` rather than degrading quietly, and the interface names whichever engine
+is actually connected. See `AI_CODING_LOG.md`.
+
+**Lesson** "The documentation is unreachable" was a claim about my own search, stated as a
+claim about the world. Check the vendor's own repository before concluding a product does not
+exist.
 
 ## 8. Browser print-to-PDF instead of a PDF library
 

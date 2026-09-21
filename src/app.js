@@ -28,7 +28,7 @@ import { StateGlyph } from './components/stateGlyph.js';
 import { openSourceSheet } from './components/sourceChip.js';
 import { openSheet, closeSheet } from './components/sheet.js';
 import { createVoice, voiceSupported } from './voice/speech.js';
-import { HONEST_LABEL, isConfigured as liveConfigured } from './voice/live.js';
+import { HONEST_LABEL, LIVE_LABEL, isConfigured as liveConfigured, createLiveVoice } from './voice/live.js';
 import { cue, unlockAudio, setSoundEnabled } from './core/sound.js';
 import { detectTier, applyTier, TIER_LINE, watchOnline } from './core/net.js';
 import { t, setLanguage, getLanguage, LANGUAGES, detectLanguage, SWITCH_LINE } from './i18n/strings.js';
@@ -38,7 +38,7 @@ import * as store from './core/store.js';
 
 const app = {
   pack: null, machine: null, aperture: null, companion: null, captions: null,
-  voice: null, tier: 'full', online: navigator.onLine, reduced: prefersReducedMotion(),
+  voice: null, live: null, tier: 'full', online: navigator.onLine, reduced: prefersReducedMotion(),
   payload: null, route: null, routeSources: [], draft: null, caseId: null,
   image: null, photoURL: null, user: {}, disclosure: { ...DEFAULT_DISCLOSURE },
   motes: [], nudged: false, firstRun: true,
@@ -547,7 +547,8 @@ function privacyPanel() {
   return el('section', { class: 'card', style: { marginTop: '32px' } },
     el('h3', { class: 'card__title', text: t('privacy.title') }),
     el('p', { class: 'tt__row', text: t('privacy.body') }),
-    el('p', { class: 'tt__checked', text: liveConfigured() ? '' : HONEST_LABEL }),
+    el('p', { class: 'tt__checked',
+      text: app.live?.connected ? LIVE_LABEL(app.live.model) : HONEST_LABEL }),
     el('p', { class: 'tt__checked', style: { marginTop: '12px' },
       text: app.user && Object.keys(app.user).length
         ? `Held about you: ${Object.keys(app.user).join(', ')}.`
@@ -762,12 +763,54 @@ function coldStart() {
   $('#app').append(overlay);
 }
 
-function begin(micGranted) {
+async function begin(micGranted) {
   app.machine.send('TAP');
   app.machine.send(micGranted ? 'GRANTED' : 'DENIED');
   syncAperture();
 
-  if (micGranted && voiceSupported() && app.tier !== 'text') {
+  /* When a relay is configured the hosted model drives the whole
+     conversation: it hears, it decides which tool to call, and it speaks
+     — including the natural fillers it makes while background reasoning
+     runs, which is the audible half of the motes in §8.4. Without a
+     relay we fall back to the browser speech engine and say so. */
+  if (micGranted && liveConfigured() && app.tier !== 'text') {
+    app.live = createLiveVoice({
+      onHeard: (t) => app.captions.partial(t),
+      onSaid: (t) => { app.captions.settle(); app.captions.say(t); },
+      onEnergy: (v) => { app.aperture?.setEnergy(v); app.companion?.setEnergy(v); },
+      onState: (st) => {
+        if (st === 'speaking') { app.aperture?.setState('speaking'); app.companion?.setState('speaking'); }
+        else if (st === 'working') { app.aperture?.setState('working'); app.companion?.setState('working'); }
+        else syncAperture();
+      },
+      onSurface: handleLiveSurface,
+      onReady: (m) => { status(LIVE_LABEL(m.model)); setTimeout(() => status(''), 4000); },
+      onError: (msg) => { console.error('[wazi/live]', msg); status(msg); },
+      onUnavailable: (reason) => {
+        console.error('[wazi/live] unavailable:', reason);
+        app.live?.stop(); app.live = null;
+        status('The hosted model is not reachable. Using on-device speech instead.');
+        startBrowserVoice();
+      },
+    });
+    try {
+      await app.live.start();
+      /* Wazi speaks first. The opening line is ours, not the model's. */
+      app.live.openWith(
+        'The person has just opened the app and has not said anything yet. ' +
+        'Greet them in one short sentence, in your own voice, and invite them to ' +
+        'show you something or tell you what is bothering them.');
+    } catch (err) {
+      console.error('[wazi/live]', err);
+      status('The hosted model did not connect. Using on-device speech instead.');
+      app.live = null;
+    }
+  }
+
+  if (!app.live && micGranted) startBrowserVoice();
+
+  function startBrowserVoice() {
+    if (app.voice || !voiceSupported() || app.tier === 'text') return;
     app.voice = createVoice({
       lang: LANGUAGES.find((l) => l.code === getLanguage())?.bcp47 ?? 'en-KE',
       onPartial: (txt) => app.captions.partial(txt),
@@ -780,9 +823,9 @@ function begin(micGranted) {
       },
     });
     app.voice.start();
-  } else if (!micGranted) {
-    say(t('denied'));
   }
+
+  if (!micGranted) say(t('denied'));
 
   app.aperture.setState('waking');
   cue('wake');
@@ -798,6 +841,61 @@ function begin(micGranted) {
       say(t('open.nudge'));
     }
   }, 12000);
+}
+
+/**
+ * Surfaces pushed by the relay. The hosted model never sees the evidence
+ * itself — it gets one or two sentences of already-decided language — so
+ * everything that renders arrives here, from the tools, already
+ * schema-validated on the server. §23.1
+ */
+function handleLiveSurface(surface) {
+  if (!surface) return;
+  switch (surface.kind) {
+    case 'mote': {
+      const next = app.motes.filter((m) => m.tool !== surface.tool);
+      next.push({ tool: surface.tool, label: surface.label, status: surface.status });
+      setMotes(next);
+      if (surface.status === 'running') status(surface.label);
+      break;
+    }
+    case 'evidence':
+      app.payload = surface.payload;
+      app.caseId = app.caseId ?? newCaseId();
+      app.machine.assign({ evidence: surface.payload });
+      if (app.machine.state !== 'evidence') {
+        if (app.machine.state === 'listening') app.machine.send('SPEECH');
+        if (app.machine.state === 'hearing') app.machine.send('TURN_END');
+        if (app.machine.state === 'triage') app.machine.send('CIVIC');
+        app.machine.send('RESOLVED');
+      }
+      endMotes(); status('');
+      showEvidence();
+      cue(surface.payload.evidence_state === 'CONFLICTING' ? 'conflicting' : 'evidence');
+      break;
+    case 'route':
+      app.route = surface.route;
+      app.routeSources = surface.sources ?? [];
+      app.machine.assign({ route: surface.route });
+      if (app.machine.state === 'evidence') app.machine.send('TAKE_ACTION');
+      if (app.machine.state === 'routing') app.machine.send('ROUTED');
+      endMotes(); status('');
+      showDraft();
+      break;
+    case 'no_route':
+      endMotes(); status('');
+      toDay((body) => body.append(NoRouteCard(surface.reason)));
+      break;
+    case 'no_match':
+    case 'tool_failed':
+      endMotes(); status('');
+      break;
+    case 'safety':
+      app.machine.interrupt('safety_redirect');
+      syncAperture(); showSafety();
+      break;
+    default: break;
+  }
 }
 
 /* ── Boot ────────────────────────────────────────────────────────────── */

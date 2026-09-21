@@ -1592,35 +1592,56 @@ benefit is that Law 1 and Law 6 are enforced on a machine the user's phone canno
 If a direct connection is later required for latency, tool execution still stays server-side —
 revisit only after the relay path is proven, and record it in `DECISIONS.md`.
 
-### 23.4 [SPEC] Models — configuration, not hard-coding
+### 23.4 [SPEC] Models
 
-**Do not hard-code model IDs anywhere in application code.** Put them in
-`server/models.config.ts` with a capability comment, and resolve at boot:
+> **Corrected.** An earlier version of this section said the brief's model identifiers could
+> not be confirmed, because `ai.google.dev` is blocked by this environment's egress proxy.
+> That was a failure of effort, not a limitation — Google publishes its own
+> `gemini-live-api-dev` skill on GitHub, which is reachable and authoritative. It is vendored
+> at `.claude/skills/gemini-live-api-dev/`. The brief was right. `DECISIONS.md` #7.
 
-```ts
-export const MODELS = {
-  host:   process.env.WAZI_HOST_MODEL   ?? '<realtime native-audio model>',
-  worker: process.env.WAZI_WORKER_MODEL ?? '<fast reasoning model w/ search grounding>',
-  challenger: process.env.WAZI_CHALLENGER_MODEL ?? '<same family as worker>',
-} as const;
+| Role | Model | Why |
+|---|---|---|
+| **Host** | `gemini-3.8-live` | Default for low-latency conversation. Async function calling (`behavior: NON_BLOCKING`) is the default mode. No `thinking_level`. |
+| **Deep** | `gemini-3.8-live-extended-thinking` | Background reasoning during a live call. **Speaks natural conversational fillers while async tools run** — the audible half of the motes in §8.4. `thinking_level` low/medium/high. |
+| **Worker** | a fast reasoning model, structured output, temperature 0 | Produces the evidence. Never holds a conversation. §23.1 |
+
+Pinned in `server/models.config.mjs`, overridable by environment.
+
+#### What the documentation changed in this design
+
+The extended-thinking model **narrates its own background work**. §8.4 designed motes on the
+assumption that the narration would have to be ours; it does not. Wazi can say *"let me check
+the records"* in its own voice while the evidence worker runs, and the motes become the visual
+half of something the user also hears.
+
+`interaction_status` is the exact signal §23.5 was describing without knowing its name:
+
+- `IN_PROGRESS` — reasoning, speaking fillers, or awaiting async tool responses
+- `IDLE` — everything finished; the session is waiting for the person
+
+**`turnComplete` does not mean idle on that model.** The character leaves `working` on
+`IDLE`, never on `turnComplete`.
+
+#### Protocol constants (from the vendored skill, not from memory)
+
+```
+input    raw PCM16 mono 16 kHz   audio/pcm;rate=16000
+output   raw PCM16 mono 24 kHz
+session  audio only 15 min · audio+video 2 min · connection ~10 min
+context  128k in / 64k out
+modality AUDIO or TEXT per session, never both
 ```
 
-Required capabilities:
+Captions therefore come from `output_audio_transcription`, not from a second text stream.
 
-- **Host:** bidirectional streaming audio in/out, image frames in, server-side VAD with
-  interruption, input + output transcription, function calling, multilingual, session
-  resumption, ephemeral tokens.
-- **Worker:** strict JSON-schema structured output, tool/function calling, search grounding
-  with returned citations, temperature 0, low latency (target <4 s p50).
+**Removed from the API, do not send:** `enable_affective_dialog` (gone), `proactive_audio:
+false` (proactive audio is permanently enabled and setting it returns an error).
 
-> **Verify before building.** The Director's Brief names specific model versions. Model naming
-> changes fast and the brief's identifiers could not be confirmed against official
-> documentation at the time of writing (`ai.google.dev` was unreachable from the build
-> environment). Google's current Live API documentation describes native-audio realtime models
-> with 30 HD voices across 24 languages, proactive audio, function calling and search
-> grounding — the capability set above. **Step 1 of the build sequence is to list the models
-> actually available in the team's API project, pick by capability, and record the exact IDs
-> and the date in `DECISIONS.md`.** Never ship a model ID nobody has called.
+**Every function declaration is `NON_BLOCKING`.** Blocking mode is a hard error on the
+extended-thinking model.
+
+**Ephemeral tokens** if a browser ever connects directly. It does not here — see §23.3.
 
 ### 23.5 [SPEC] Realtime handling — the unglamorous list that decides whether the demo works
 

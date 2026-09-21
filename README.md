@@ -28,6 +28,23 @@ npm run verify:browser            # full journey + the six failure drills
 SHOTS=./shots npm run verify:journey   # and write screenshots
 ```
 
+### Turning on the hosted voice
+
+Everything above works with no key. To run the real Gemini Live conversation instead of the
+browser speech engine:
+
+```bash
+npm install
+WAZI_API_KEY=your-key npm run relay      # holds the key, runs the tools
+# then set <meta name="wazi-relay" content="ws://localhost:8787"> in index.html
+npm start
+```
+
+The relay **refuses to start without a key** rather than degrading quietly, and it does not
+tell the browser a model is connected until the session has produced something — a bad key
+produces `unavailable`, the app falls back to on-device speech, and the interface says so.
+Models, limits and protocol are in [`DESIGN.md`](DESIGN.md) §23.4.
+
 The three-minute demo path is in [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md).
 
 ## The problem

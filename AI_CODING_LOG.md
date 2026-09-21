@@ -63,6 +63,34 @@ Two of my own **tests** were also wrong rather than the code — asserting that 
 `disclosure` came from `drafting` (forbidding a legitimate back edge), and treating decorative
 hairlines as WCAG 1.4.11 graphical objects. Both were corrected rather than worked around.
 
+## The biggest miss
+
+**I declared a product did not exist because one domain was blocked.**
+
+The brief named `Gemini 3.8 Live` and `Gemini 3.8 Live Extended Thinking`. `ai.google.dev` is
+blocked by this environment's egress proxy, so I could not read the official docs. I wrote in
+`DECISIONS.md` and `DESIGN.md` that the identifiers "could not be confirmed", specified model
+selection abstractly, and shipped `src/voice/live.js` as a stub that threw.
+
+That reasoning was wrong in a way worth naming: **a claim about my own search was stated as a
+claim about the world.** Google publishes its own `gemini-live-api-dev` skill on GitHub, which
+is reachable from here, authoritative, and current. Both models exist. The brief was right and
+I had quietly designed around it.
+
+What that cost: a specified-but-stubbed realtime path, and — worse — a design that assumed
+Wazi would have to narrate its own tool use, when `gemini-3.8-live-extended-thinking` speaks
+natural conversational fillers while async tools run. The capability I was designing a
+substitute for was already in the model.
+
+Corrected: the skill is vendored at `.claude/skills/gemini-live-api-dev/`, both models are
+pinned in `server/models.config.mjs`, and `server/relay.mjs` is a real client against the
+documented protocol. It has still never been run against a live key — see the limitations
+below — but it refuses to start without one and refuses to claim a connection it has not
+proven.
+
+**Lesson:** check the vendor's own repository before concluding a product does not exist.
+One blocked domain is not the end of a search.
+
 ## What the model got wrong on its own terms
 
 - **`DESIGN.md` §18 described the evidence ladder as if it were a strength ordering.** It is
@@ -96,7 +124,9 @@ npm run check      # pack validation + contrast + 34 tests
 
 - The vision/clue-extraction path is fixture-backed, so nothing here demonstrates AI tooling
   against real photographs.
-- No hosted model is connected in this build. The realtime path is specified and stubbed, and
-  the interface says so rather than implying otherwise.
+- **The relay has never been run against a real API key.** Its protocol follows Google's own
+  vendored skill and the bad-key path is tested (it reports `unavailable` and the app falls
+  back to on-device speech), but nothing here demonstrates a working live conversation. That
+  needs a key and twenty minutes.
 - The flagship case is entirely synthetic. `data/packs/ke-siaya/PROVENANCE.md` carries the
   sign-off table that has to be completed by a named human before any public demonstration.
