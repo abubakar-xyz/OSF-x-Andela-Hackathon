@@ -62,17 +62,22 @@ function say(text, { silent = false } = {}) {
     text = REFUSAL_LINE;
   }
   app.captions?.say(text);
-  if (host.companion && !host.companion.hidden) {
+  /* The floating bubble is a Night-world affordance. On Day the sheet is
+     paper, full of things that must stay legible — including text marked
+     mandatory and non-dismissible (§22) — and a fixed-position bubble has
+     no way to know it is about to land on top of one. Read the line from
+     the transcript instead; the workspace owns the screen here. §15.4 */
+  if (host.companion && !host.companion.hidden && !host.day.classList.contains('is-open')) {
     host.companionSay.hidden = false;
     host.companionSay.dataset.fading = 'false';
     host.companionSay.textContent = text;
-    /* Speak, then clear the reading path. The line is kept in the
-       transcript; the workspace owns the screen here. §15.4 */
     clearTimeout(say._fade);
     say._fade = setTimeout(() => {
       host.companionSay.dataset.fading = 'true';
       setTimeout(() => { host.companionSay.hidden = true; }, 500);
     }, 7000);
+  } else if (host.companionSay) {
+    host.companionSay.hidden = true;
   }
   if (!silent && app.voice && app.tier !== 'text') app.voice.say(text);
 }
@@ -135,7 +140,11 @@ function toDay(build) {
   build(host.dayBody);
   host.day.hidden = false;
   requestAnimationFrame(() => host.day.classList.add('is-open'));
-  host.companion.hidden = false;
+  /* Day is paper, not a stage. The companion belongs to the Night
+     conversation — on Day it has nothing to stand on but the page's own
+     content, which is exactly what it must never cover. §15.4, §22 */
+  host.companion.hidden = true;
+  host.companionSay.hidden = true;
   host.dayCaseId.textContent = app.caseId ?? '';
   host.chips.replaceChildren();
 }
