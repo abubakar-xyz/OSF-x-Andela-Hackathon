@@ -111,10 +111,12 @@ export function resolve_civic_entity(clues = [], pack, jurisdiction = {}) {
   if (!scored.length) return fail('resolve_civic_entity', 'no entity in this pack matches those clues');
 
   const chosen = scored[0].entity;
-  /* Mistaken identity is expected, not exceptional. Always offer the
-     near-misses so the user can correct us. §17 */
-  const alternatives = scored.slice(1)
-    .filter((s) => s.score >= scored[0].score - 5)
+  /* Mistaken identity is expected, not exceptional, and it matters MOST
+     when we are confident — a high-scoring reference-number match on the
+     wrong facility is the failure nobody catches. So any candidate whose
+     name or reference matched at all is offered, not only the close
+     ones. §17 */
+  const alternatives = scored.slice(1, 4)
     .map((s) => ({ id: s.entity.id, name: s.entity.name }));
 
   return ok({ chosen, alternatives, ambiguous: alternatives.length > 0, retrieved_at: nowISO() });

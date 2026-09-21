@@ -94,6 +94,26 @@ function setMotes(list) {
   if (app.reduced) renderMoteList();
 }
 
+/**
+ * Clearing the motes is what ends the animation — but under reduced
+ * motion the checklist IS the information, and the pipeline finishes in
+ * milliseconds, so clearing it immediately would leave nothing to read.
+ * It stays until the next run or a return to Night.
+ */
+function endMotes() {
+  if (app.reduced) {
+    app.aperture?.setMotes([]);
+    app.companion?.setMotes([]);
+    return;                       /* leave the completed checklist up */
+  }
+  setMotes([]);
+}
+
+function clearMoteList() {
+  app.motes = [];
+  document.getElementById('moteList')?.remove();
+}
+
 function renderMoteList() {
   const existing = $('#moteList');
   if (!app.motes.length) { existing?.remove(); return; }
@@ -121,6 +141,7 @@ function toDay(build) {
 
 function toNight() {
   host.day.classList.remove('is-open');
+  clearMoteList();
   host.companion.hidden = true;
   host.companionSay.hidden = true;
   setTimeout(() => { host.day.hidden = true; clear(host.dayBody); }, 480);
@@ -188,6 +209,7 @@ async function verify(utterance) {
   syncAperture();
 
   const running = new Map();
+  clearMoteList();
   setMotes([]);
   status('');
 
@@ -202,7 +224,7 @@ async function verify(utterance) {
   });
 
   status('');
-  setMotes([]);
+  endMotes();
 
   if (!result.ok) {
     /* Law 4 — nothing found is never presented as disproof. */
@@ -301,7 +323,7 @@ async function checkAgain() {
     onMote: (m) => { running.set(m.tool, m); setMotes([...running.values()]); },
   });
 
-  setMotes([]); status('');
+  endMotes(); status('');
 
   if (!result.ok) {
     app.machine.send('TOOL_FAILED');
@@ -330,7 +352,7 @@ async function takeAction() {
     onMote: (m) => { running.set(m.tool, m); setMotes([...running.values()]); },
   });
 
-  setMotes([]); status('');
+  endMotes(); status('');
 
   if (!routed.ok) {
     /* Refusing to offer an unverified contact is a correct outcome. §21.1 */
