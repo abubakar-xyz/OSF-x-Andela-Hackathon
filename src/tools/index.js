@@ -351,14 +351,22 @@ export function find_responsible_body(entityId, pack) {
     escalation: null,
   };
 
+  const escalationSources = [];
   if (inst.escalation_id) {
     const esc = find_responsible_body_byInstitution(inst.escalation_id, pack);
-    if (esc?.ok) route.escalation = { body: esc.route.body, office: esc.route.office, address: esc.route.address };
+    if (esc?.ok) {
+      route.escalation = { body: esc.route.body, office: esc.route.office, address: esc.route.address };
+      /* The escalation's address is a Fact too, so its source has to
+         travel with the route or the renderer will refuse it. §19 */
+      const escSrc = pack.sourceById.get(esc.route.address.source_id);
+      if (escSrc) escalationSources.push(escSrc);
+    }
   }
 
   const accepted = acceptRoute(route);
   if (!accepted.ok) return fail('find_responsible_body', `route failed validation: ${accepted.errors.join('; ')}`);
-  const sources = [src, pack.sourceById.get(inst.mandate_source_id), proc && pack.sourceById.get(proc.deadline_source_id)]
+  const sources = [src, pack.sourceById.get(inst.mandate_source_id),
+                   proc && pack.sourceById.get(proc.deadline_source_id), ...escalationSources]
     .filter(Boolean);
   return ok({ route, sources: [...new Map(sources.map((s) => [s.id, s])).values()] });
 }

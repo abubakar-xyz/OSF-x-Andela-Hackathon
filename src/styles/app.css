@@ -223,7 +223,14 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 .tt__entity { padding: var(--s4) var(--s5); border-bottom: 1px solid var(--paper-300); }
 .tt__cols { display: grid; grid-template-columns: 1fr; }
 @media (min-width: 360px) { .tt__cols { grid-template-columns: 1fr 1fr; } }
-.tt__col { padding: var(--s4) var(--s5); }
+.tt__col { padding: var(--s4) var(--s5); min-width: 0; }
+@media (max-width: 480px) {
+  .tt__col { padding: var(--s3) var(--s3); }
+  .tt__quote { font-size: 16px; line-height: 24px; }
+  .tt__claim { font-size: 28px; line-height: 32px; padding: var(--s4) var(--s4) var(--s3); }
+  .tt__entity, .tt__lists, .tt__foot, .tt__verdict { padding-left: var(--s4); padding-right: var(--s4); }
+  .src__pub { font-size: 14px; }
+}
 .tt__col + .tt__col { border-top: 1px solid var(--paper-300); }
 @media (min-width: 360px) {
   .tt__col + .tt__col { border-top: 0; border-left: 1px solid var(--paper-300); }
@@ -234,7 +241,11 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 }
 .tt__quote { font: var(--quote); font-style: italic; margin-bottom: var(--s3); }
 .tt__row { font: var(--bodysm); margin-bottom: var(--s2); }
-.tt__photo { border-radius: var(--r-img); border: 1px solid var(--paper-300); margin-bottom: var(--s3); }
+.tt__photo {
+  border-radius: var(--r-img); border: 1px solid var(--paper-300);
+  margin-bottom: var(--s3); width: 100%; height: 132px; object-fit: cover;
+  object-position: center 62%;   /* the building, not the sky */
+}
 .tt__verdict {
   display: flex; flex-direction: column; align-items: center; gap: var(--s2);
   padding: var(--s5); text-align: center;
@@ -381,9 +392,15 @@ button, [role="button"], select, summary { min-height: var(--touch); }
 .companion__say {
   font: var(--label); color: var(--text-on-paper);
   background: var(--paper-50); border: 1px solid var(--paper-300);
-  border-radius: var(--r-pill); padding: var(--s2) var(--s4);
+  border-radius: var(--r-card); padding: var(--s2) var(--s3);
   animation: rise var(--dur-base) var(--ease-out) both;
+  max-width: min(60vw, 260px);
+  max-height: 76px; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
 }
+/* It says its line, then gets out of the way. The full text stays in the
+   transcript — the workspace owns the screen here, not the character. */
+.companion__say[data-fading="true"] { opacity: 0; transition: opacity var(--dur-slow) var(--ease-out); }
 
 /* ══ Reduced-motion mote checklist (§8.5) ════════════════════ */
 .motes-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }

@@ -44,7 +44,15 @@ export const STATE_SPEECH = {
   attention: 'Wazi needs your attention', offline: 'Wazi is offline',
 };
 
-const LEAF_PATH = 'M 0,-18 Q 13,-30 10,-46 Q 0,-52 -10,-46 Q -13,-30 0,-18 Z';
+/**
+ * An aperture blade, authored pointing up from the origin.
+ *
+ * The straight inner edge is what forms the opening: six of these at 60°
+ * each span roughly 95°, so they overlap the way a real iris diaphragm
+ * does. An earlier version used narrow rounded leaves, which rendered as
+ * a daisy — separated petals read as a flower, not as something opening.
+ */
+const LEAF_PATH = 'M -30,-14 L 30,-14 L 40,-44 Q 0,-70 -40,-44 Z';
 const LEAF_COUNT = 6;
 const MAX_MOTES = 5;
 
@@ -124,6 +132,10 @@ export function createAperture({ size = 168, motes: showMotes = true, live = fal
       `<stop offset="55%" stop-color="#F4B942"/>` +
       `<stop offset="100%" stop-color="#E09A1C"/>` +
     `</radialGradient>` +
+    /* The housing. A real diaphragm hides the backs of its blades behind
+       a circular barrel — without it the outer silhouette goes ragged as
+       the blades travel, and the whole thing reads as a gear. */
+    `<clipPath id="${uid}housing"><circle cx="0" cy="0" r="45"/></clipPath>` +
     (glowEnabled
       ? `<filter id="${uid}blur" x="-60%" y="-60%" width="220%" height="220%">` +
         `<feGaussianBlur stdDeviation="6"/></filter>`
@@ -142,7 +154,7 @@ export function createAperture({ size = 168, motes: showMotes = true, live = fal
   root.appendChild(glow);
 
   const rim = document.createElementNS(NS, 'circle');
-  rim.setAttribute('r', '47');
+  rim.setAttribute('r', '52');
   rim.setAttribute('fill', 'none');
   rim.setAttribute('stroke', '#16C6B1');
   rim.setAttribute('stroke-width', '1.25');
@@ -151,12 +163,18 @@ export function createAperture({ size = 168, motes: showMotes = true, live = fal
   root.appendChild(rim);
 
   const leafGroup = document.createElementNS(NS, 'g');
+  leafGroup.setAttribute('clip-path', `url(#${uid}housing)`);
   root.appendChild(leafGroup);
   const leaves = [];
   for (let i = 0; i < LEAF_COUNT; i++) {
     const leaf = document.createElementNS(NS, 'path');
     leaf.setAttribute('d', LEAF_PATH);
     leaf.setAttribute('fill', '#0E8E7F');
+    /* Overlapping blades in one flat colour merge into a solid ring —
+       a hairline edge is what makes it read as six blades. */
+    leaf.setAttribute('stroke', '#071820');
+    leaf.setAttribute('stroke-width', '0.9');
+    leaf.setAttribute('stroke-linejoin', 'round');
     leafGroup.appendChild(leaf);
     leaves.push(leaf);
   }
@@ -223,8 +241,14 @@ export function createAperture({ size = 168, motes: showMotes = true, live = fal
 
       /* ── paint ── */
       const open = cur.openness;
-      const twist = lerp(-26, 8, open);
-      const push = lerp(0, 6, open);
+      /* push moves the blade along its own axis: negative closes the
+         hole over the core, positive opens it. twist adds the slight
+         rotation a real diaphragm has as it travels. */
+      /* The closed extreme pushes the inner edge PAST the centre so the
+         blades genuinely cover the core — stopping short leaves a lit
+         pinhole and a closed aperture still looks awake. */
+      const twist = lerp(-15, 4, open);
+      const push = lerp(-16, 10, open);
       const leafFill = spec.core === 'slate' ? mix(SLATE, SLATE, 0) : mix(TEAL_CLOSED, TEAL_OPEN, open);
       const leafOp = (0.55 + open * 0.45) * cur.dim;
 
@@ -235,6 +259,8 @@ export function createAperture({ size = 168, motes: showMotes = true, live = fal
         leaves[i].setAttribute('opacity', leafOp.toFixed(3));
       }
 
+      /* When the blades close over the core the glow must go with it,
+         or a closed aperture still looks lit. */
       const coreR = 14 + cur.energy * 5;
       core.setAttribute('r', coreR.toFixed(2));
       if (spec.core === 'hollow') {

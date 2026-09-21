@@ -14,9 +14,19 @@
 export const FORBIDDEN = [
   'stolen', 'stole', 'embezzled', 'embezzlement', 'corrupt', 'corruption',
   'fraud', 'fraudulent', 'ghost project', 'abandoned', 'they lied', 'lied about',
-  'proof of', 'proves that', 'definitely', 'guaranteed', 'scandal',
+  'definitely', 'guaranteed', 'scandal',
   'we confirmed that they', 'this shows that',
 ];
+
+/**
+ * Phrases that are forbidden as an ASSERTION but required as a DENIAL.
+ * "That isn't proof of anything yet" is the restrained line §9.4 asks
+ * for; "this is proof of theft" is the accusation Law 3 forbids. A flat
+ * substring match cannot tell them apart, so these are checked with a
+ * short negation window in front.
+ */
+export const NEGATABLE = ['proof of', 'proves that', 'evidence of wrongdoing'];
+const NEGATORS = /\b(not|isn'?t|is not|aren'?t|are not|never|no|nor|without|doesn'?t|does not|won'?t|will not|cannot|can'?t)\b[^.!?]{0,24}$/i;
 
 /** Percentages are banned outright — §5 Decision 7. */
 const PERCENT_CONFIDENCE = /\b\d{1,3}\s?%\s*(confident|confidence|certain|sure|complete)\b/i;
@@ -25,6 +35,18 @@ const PERCENT_COMPLETE = /\b\d{1,3}\s?%\s*(done|built|finished)\b/i;
 export function scanForbidden(text) {
   const t = String(text || '').toLowerCase();
   const hits = FORBIDDEN.filter((w) => t.includes(w));
+
+  for (const phrase of NEGATABLE) {
+    let from = 0;
+    for (;;) {
+      const at = t.indexOf(phrase, from);
+      if (at === -1) break;
+      /* Only an unnegated use is an accusation. */
+      if (!NEGATORS.test(t.slice(Math.max(0, at - 40), at))) { hits.push(phrase); break; }
+      from = at + phrase.length;
+    }
+  }
+
   if (PERCENT_CONFIDENCE.test(t)) hits.push('percentage confidence');
   if (PERCENT_COMPLETE.test(t)) hits.push('percentage completion');
   return hits;
