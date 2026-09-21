@@ -120,13 +120,48 @@ npm run check      # pack validation + contrast + 34 tests
 - Browser verification in Chromium at 390×844, driving the full journey from cold start to
   disclosure review, asserting zero console errors.
 
+## Update: run against a real key, and what it found
+
+That gap was closed. A working key made two things possible for the first time: an actual
+live Gemini conversation, and a second reference implementation (a separate, working Live API
+project by the same team) to learn from directly rather than from documentation alone.
+
+Studying that reference caught a real, live bug review had missed: **typed input never
+reached the live model.** `app.live.text()` existed on the client; nothing called it. A typed
+message during a live session went to the local offline pipeline instead, silently. Since
+typing is the natural way to test on a machine without a reliable mic, this was very likely
+the actual reason an earlier round of manual testing judged the live experience "not good
+enough" — the live model may never have been exercised at all, only its fallback.
+
+With that fixed and a real key in place, the full architecture was verified end-to-end for
+the first time: connect → model-first greeting → a typed question correctly triggers
+`check_public_record` via tool-calling, with the model speaking a natural filler
+("Let me check the records") while it runs → the resulting evidence card → "Check again"
+genuinely overturning a verdict via `challenge_finding` → "Take action" resolving a real
+office via `find_who_is_responsible` → the draft screen. Zero console errors, real audio
+confirmed via populated output transcription.
+
+The same real-key testing also caught a subtler bug no amount of code review would have:
+Google's search-grounding response never populates `groundingChunk.web.domain`, and
+`web.uri` is an opaque `vertexaisearch.cloud.google.com` redirect, not the source's real
+address — so a domain-trust check reading the URL would have graded every single result
+"unverified" regardless of the actual site. `web.title` turned out to reliably carry the
+real bare domain instead, confirmed against ~14 live grounding chunks mixing real government
+sites with facebook.com and an unrelated NGO site. Fixed and locked in with a regression test
+built from the real response shape.
+
+**Lesson, twice now:** a stub that has never met the real system will look correct right up
+until it does. The fix both times was not more careful reading — it was running the real
+thing and treating what it returned as data, not as what the SDK types or intuition implied
+it would return.
+
 ## Honest limitations of this account
 
 - The vision/clue-extraction path is fixture-backed, so nothing here demonstrates AI tooling
   against real photographs.
-- **The relay has never been run against a real API key.** Its protocol follows Google's own
-  vendored skill and the bad-key path is tested (it reports `unavailable` and the app falls
-  back to on-device speech), but nothing here demonstrates a working live conversation. That
-  needs a key and twenty minutes.
 - The flagship case is entirely synthetic. `data/packs/ke-siaya/PROVENANCE.md` carries the
   sign-off table that has to be completed by a named human before any public demonstration.
+- Barge-in (interrupting Wazi mid-sentence) was exercised against a real session with a loud
+  synthetic tone as fake microphone input and did not break the conversation, but was not
+  rigorously confirmed frame-by-frame — a synthetic tone's amplitude profile is not the same
+  thing as a real interruption, and that distinction matters for a threshold-based detector.
