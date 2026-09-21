@@ -6,9 +6,11 @@
 > match what you are looking at, and writes the letter to the office that owes you an answer.
 
 Andela × Open Society Foundations 2026 civic-tech hackathon — *Information You Can Trust*.
-Primary track: **Transparency & Accountability**. Secondary: **Safety, Reporting & Protection**.
 
-Formerly briefed as *NURU Civic*. Renamed — the reasoning is in [`DESIGN.md §1`](DESIGN.md).
+## Tracks
+
+- **Primary: Transparency & Accountability**
+- **Secondary: Safety, Reporting & Protection**
 
 ---
 
@@ -24,13 +26,66 @@ design tokens · every component · the Two Truths card · the state machine · 
 the architecture · the tool contracts · the data pack · performance budgets · accessibility ·
 the build sequence · the tests · the three-minute demo.
 
-## Status
+### The rename
 
-Design complete. Implementation follows the build sequence in `DESIGN.md §30`.
+This project was briefed as **NURU Civic**. It is now **Wazi** — *serikali wazi* is the standing
+Kiswahili phrase for open government, *sema wazi* means speak plainly, and a product that will
+often have to say "I don't know" cannot be named after truth. Reasoning in
+[`DESIGN.md §1`](DESIGN.md).
 
-Step 1 is not writing code — it is listing the models actually available in the team's API
-project and choosing by capability. Step 5 is verifying, by hand, the one real civic case this
-whole thing stands on. Nothing in the demo is real until that is done.
+> **The rename is not yet applied to the code.** `src/` still carries the NURU name from the
+> baseline POC. That is tracked as the next change, not an oversight.
+
+---
+
+## What the current POC demonstrates
+
+A deterministic baseline, ahead of the design in `DESIGN.md` being implemented:
+
+- Companion-first interaction shell with text-first fallback
+- Deterministic civic verification flow with evidence states
+- Record vs Reality output with provenance and freshness
+- Check Again adversarial pass
+- Responsible-body / contact routing with verified-route filtering
+- Draft Studio outputs (email, formal letter, WhatsApp summary)
+- Explicit approval gate before external action preparation
+
+## Architecture (current POC)
+
+| Path | What it holds |
+|---|---|
+| `src/engine.js` | tool contracts and trust-state logic |
+| `src/data/countryPack.js` | flagship jurisdiction pack fixture |
+| `src/prompts/*` | separated prompt / policy files |
+| `src/jurisdictions/kenya/pack.json` | country pack artifact |
+| `src/schemas/evidence-result.schema.json` | evidence schema |
+| `tests/engine.test.js` | evaluation suite |
+
+The target architecture — the two-brain split, the state machine, the component library — is
+specified in `DESIGN.md §16`, `§23` and `§24`.
+
+## Setup
+
+```bash
+npm test
+npm run start
+# open http://localhost:4173
+```
+
+## Data provenance and limitations
+
+- The repository includes a **clearly labelled demo fixture** for Nairobi County. It is not
+  live government data and is not presented as such.
+- Outputs carry publication and retrieval metadata.
+- This POC does **not** auto-send external submissions. Action preparation is simulated, and
+  labelled simulated.
+- The flagship case is not yet backed by a hand-verified real record. `DESIGN.md §25` and
+  Appendix D name this as the highest-risk open item.
+
+## Demo path
+
+See [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md). The target three-minute choreography is in
+`DESIGN.md §32`.
 
 ## Principles, in short
 
@@ -40,4 +95,16 @@ proof of wrongdoing. Absence of evidence is reported as absence of evidence. Not
 device without a human approving exactly what goes out. There are no confidence percentages —
 there is a five-rung evidence ladder that includes *"I don't have enough to say either way."*
 
-The full nine are in `DESIGN.md §6`.
+The full nine Product Laws are in `DESIGN.md §6`.
+
+## Required deliverables
+
+- [`.env.example`](.env.example) — no credentials
+- [`DESIGN.md`](DESIGN.md)
+- [`DECISIONS.md`](DECISIONS.md)
+- [`THREAT_MODEL.md`](THREAT_MODEL.md)
+- [`ACCESSIBILITY.md`](ACCESSIBILITY.md)
+- [`AI_CODING_LOG.md`](AI_CODING_LOG.md)
+- [`HACKATHON_SUMMARY.md`](HACKATHON_SUMMARY.md)
+- prompt files separated by role — `src/prompts/`
+- country pack + schema + tests

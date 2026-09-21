@@ -1,0 +1,10 @@
+{
+  "name": "nuru-civic-poc",
+  "version": "0.1.0",
+  "description": "NURU Civic hackathon proof of concept",
+  "type": "module",
+  "scripts": {
+    "start": "python -m http.server 4173",
+    "test": "node --test"
+  }
+}
