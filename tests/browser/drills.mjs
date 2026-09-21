@@ -244,5 +244,52 @@ console.log('\nDrill 9 — the app is whole without three.js at all');
   await ctx.close();
 }
 
+console.log('\nDrill 10 — a dead relay falls back to on-device speech, not silence');
+{
+  /* `relayURL()` guesses a same-origin `ws://.../ws` URL whenever
+     nothing is explicitly configured — which is what makes the AI
+     Studio single-process deployment work with zero config. The failure
+     mode that guess creates: if that guessed endpoint doesn't actually
+     reach a live Wazi relay (wrong path, a proxy that drops WebSocket
+     upgrades, nothing listening there at all), the socket fails before
+     the server ever gets to say "unavailable". An earlier version only
+     triggered the on-device fallback on that explicit message, so a
+     connection that failed for any OTHER reason left the person with
+     mic access granted, `app.live` alive-but-dead, and no voice at all
+     — not degraded, just silent, with no recovery. This needs its own
+     browser: mic access has to be pre-granted, which the shared
+     `browser` above deliberately is not. */
+  const liveBrowser = await chromium.launch({
+    executablePath: process.env.CHROMIUM_PATH || undefined,
+    args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
+  });
+  const ctx = await liveBrowser.newContext({ viewport:{width:390,height:844}, permissions:['microphone'] });
+  const page = await ctx.newPage();
+  const hard = [];
+  page.on('pageerror', e => hard.push(e.message));
+  /* Point WAZI_RELAY_URL at a port nothing is listening on, so the
+     socket fails at the network level — never at the protocol level,
+     which is the exact gap the fix closes. */
+  await ctx.addInitScript(() => { window.WAZI_RELAY_URL = 'ws://localhost:1/ws'; });
+  await page.goto('http://localhost:4176/', { waitUntil:'networkidle' });
+  await page.waitForTimeout(400);
+  await page.locator('#cold button').first().click();
+
+  let settled = null;
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(500);
+    const st = await page.evaluate(() => ({
+      hasVoice: Boolean(window.__wazi?.voice),
+      hasLive: Boolean(window.__wazi?.live),
+    }));
+    if (st.hasVoice) { settled = st; break; }
+  }
+  chk('falls back to on-device speech', Boolean(settled?.hasVoice), JSON.stringify(settled));
+  chk('does not leave a dead live client behind', settled?.hasLive === false);
+  chk('no uncaught errors', hard.length === 0, hard[0]);
+  await ctx.close();
+  await liveBrowser.close();
+}
+
 console.log(`\n${bad?bad+' check(s) failed':'all drills pass'}\n`);
 await browser.close(); server.close(); process.exit(bad?1:0);

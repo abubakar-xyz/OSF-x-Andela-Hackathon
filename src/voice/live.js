@@ -207,16 +207,51 @@ export function createLiveVoice({
       ws = new WebSocket(relayURL());
 
       /* The socket being open says nothing about the model being
-         reachable. `open` is set when the relay sends `ready`. */
+         reachable. `open` is set when the relay sends `ready` — and
+         `proven` mirrors the server's own flag of the same name, for
+         the same reason: a socket can open, or error, or close, without
+         Wazi's protocol ever having said a word.
+         This matters because `relayURL()` now guesses a same-origin
+         `/ws` URL whenever nothing is explicitly configured. If that
+         guess is wrong — wrong path, a proxy that strips WebSocket
+         upgrades, no relay running at all, which is exactly what an
+         unconfigured or sandboxed deployment looks like — the socket
+         fails before ever proving anything. An earlier version only
+         called `onUnavailable` when OUR OWN relay code sent an
+         `unavailable` message, so a connection that failed for any
+         other reason left the person with no live voice and no
+         fallback to on-device speech: `app.live` stayed non-null, so
+         the caller never tried the browser engine either. Any failure
+         to prove readiness now falls back the same way, regardless of
+         why it failed. */
+      let proven = false;
+      /* A browser fires BOTH onerror and onclose for a connection that
+         never opens (error, then close). `settled` keeps that single
+         real-world failure from reaching `onUnavailable` twice. */
+      let settled = false;
+      const failWithoutProof = (reason) => {
+        if (proven || settled) return;
+        settled = true;
+        open = false;
+        onUnavailable?.(reason);
+      };
+
       ws.onopen = () => { /* awaiting proof */ };
-      ws.onclose = () => { open = false; onState?.('idle'); };
-      ws.onerror = () => onError?.('the relay connection failed');
+      ws.onclose = () => {
+        open = false;
+        failWithoutProof('the live connection closed before it produced anything');
+        if (proven) onState?.('idle');
+      };
+      ws.onerror = () => {
+        onError?.('the relay connection failed');
+        failWithoutProof('the relay connection failed');
+      };
 
       ws.onmessage = (ev) => {
         let m; try { m = JSON.parse(ev.data); } catch { return; }
         switch (m.type) {
           case 'ready':
-            open = true; model = m.model; onReady?.(m); onState?.('listening'); break;
+            proven = true; open = true; model = m.model; onReady?.(m); onState?.('listening'); break;
           case 'audio':      playPCM(m.pcm); break;
           case 'heard':      onHeard?.(m.text); break;
           case 'said':       onSaid?.(m.text); break;
@@ -231,8 +266,12 @@ export function createLiveVoice({
           case 'expiring':   onError?.('this session is about to roll over'); break;
           case 'unavailable':
             /* Never leave the interface implying a hosted model is
-               running when it is not. §6 Law 8 */
-            open = false;
+               running when it is not. §6 Law 8
+               `proven` is set here too — this IS the protocol proving
+               itself, just proving "no" instead of "yes" — so the close
+               that follows (from our own `stop()` below, or from the
+               server) does not fire `failWithoutProof` a second time. */
+            proven = true; open = false;
             onUnavailable?.(m.reason);
             break;
           case 'error':      onError?.(m.message); break;
