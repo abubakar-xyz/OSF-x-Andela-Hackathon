@@ -1,0 +1,27 @@
+{
+  "packId": "kenya.nairobi-health-centre-v1",
+  "country": "Kenya",
+  "jurisdiction": "Nairobi County",
+  "languages": ["English", "Kiswahili"],
+  "sourceRegistry": [
+    {
+      "id": "nairobi-budget-2025",
+      "title": "Nairobi County Annual Development Plan 2025",
+      "type": "budget",
+      "authority": "Nairobi City County Government",
+      "publicationDate": "2025-06-12",
+      "retrievalDate": "2026-09-19"
+    }
+  ],
+  "contactRoutes": [
+    {
+      "office": "County Health Complaints Office",
+      "email": "healthcomplaints@nairobi.go.ke",
+      "verified": true,
+      "checkedAt": "2026-09-19"
+    }
+  ],
+  "limitations": [
+    "Completion certificate unavailable in public portal at retrieval time."
+  ]
+}
