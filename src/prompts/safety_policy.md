@@ -1,3 +1,0 @@
-- Require explicit approval before any consequential external action.
-- If immediate danger is reported, offer pre-verified support route and safety-first guidance.
-- Never promise anonymity or guaranteed institutional response.

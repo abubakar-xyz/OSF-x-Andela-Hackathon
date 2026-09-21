@@ -1,3 +1,0 @@
-- Every output is a reviewable draft.
-- Keep a neutral factual tone and list evidence references.
-- Include disclosure controls and attachment list.

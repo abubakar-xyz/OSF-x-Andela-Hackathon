@@ -1,0 +1,31 @@
+/* Wazi — print / save-as-PDF. DESIGN.md §13.3, §21.2.
+   The browser's own "Save as PDF" is the export path: zero dependency,
+   works offline, and the document never reaches a server. */
+
+@media print {
+  @page { size: A4; margin: 18mm 16mm; }
+
+  html, body, #app { height: auto; background: #fff; color: #000; overflow: visible; }
+  .night, .companion, .sheet-scrim, .cam,
+  .tt__actions, .btn, .chips, .chip, .chip-sm,
+  .night__foot, .night__top, .day__back, [data-noprint] { display: none !important; }
+
+  .day { position: static; transform: none; border-radius: 0; overflow: visible; }
+  .day__inner { max-width: none; padding: 0; }
+  .card { border: 0; padding: 0; animation: none; page-break-inside: avoid; }
+  .card + .card { margin-top: 10mm; }
+
+  .receipt { border: 1px solid #000; page-break-after: always; }
+
+  /* Sources must survive the print — a printed brief without its
+     citations is exactly the artifact we refuse to produce. §6 Law 2 */
+  .src { border-top: 1px solid #999; break-inside: avoid; }
+  .fact { border-bottom: 0; }
+  .fact__mark { display: none; }
+
+  /* Evidence state must stay readable with no colour at all. §29 */
+  .state { color: #000 !important; font-weight: 700; }
+  .ribbon { border: 1px solid #000; color: #000; background: none; }
+
+  a[href]::after { content: ' (' attr(href) ')'; font-size: 11px; }
+}

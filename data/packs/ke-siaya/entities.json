@@ -1,0 +1,35 @@
+{
+  "entities": [
+    {
+      "id": "ent-bondo-hc2",
+      "name": "Bondo Sub-County Health Centre II",
+      "aliases": ["Bondo Health Centre II", "Bondo SC HC II", "Bondo health centre"],
+      "sector": "health",
+      "admin1": "Siaya County",
+      "admin2": "Bondo Sub-County",
+      "reference": "BSC-HC-II",
+      "institution_id": "inst-siaya-health"
+    },
+    {
+      "id": "ent-bondo-hc1",
+      "name": "Bondo Sub-County Health Centre I",
+      "aliases": ["Bondo Health Centre I", "Bondo HC 1"],
+      "sector": "health",
+      "admin1": "Siaya County",
+      "admin2": "Bondo Sub-County",
+      "reference": "BSC-HC-I",
+      "institution_id": "inst-siaya-health",
+      "note": "Similar name to HC II. A frequent source of mistaken identity — offer both."
+    },
+    {
+      "id": "ent-usenge-water",
+      "name": "Usenge Water Supply Extension",
+      "aliases": ["Usenge water project"],
+      "sector": "water",
+      "admin1": "Siaya County",
+      "admin2": "Bondo Sub-County",
+      "reference": "USG-WTR-07",
+      "institution_id": "inst-siaya-water"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "routes": [
+    {
+      "id": "route-siaya-health-email",
+      "institution_id": "inst-siaya-health",
+      "channel": "email",
+      "address": "health@fixture.invalid",
+      "source_id": "src-directory-2026",
+      "verified_at": "2026-09-19",
+      "verified_how": "Listed on the published county directory page retrieved on 19 September 2026.",
+      "is_office_level": true
+    },
+    {
+      "id": "route-siaya-health-postal",
+      "institution_id": "inst-siaya-health",
+      "channel": "postal",
+      "address": "Department of Health, Siaya County Government, P.O. Box 803, Siaya",
+      "source_id": "src-directory-2026",
+      "verified_at": "2026-09-19",
+      "verified_how": "Listed on the published county directory page retrieved on 19 September 2026.",
+      "is_office_level": true
+    },
+    {
+      "id": "route-oag-email",
+      "institution_id": "inst-oag",
+      "channel": "email",
+      "address": "info@fixture.invalid",
+      "source_id": "src-auditor-2025",
+      "verified_at": "2026-09-19",
+      "verified_how": "Published on the Auditor-General report cover page retrieved on 19 September 2026.",
+      "is_office_level": true
+    },
+    {
+      "id": "route-unverified-example",
+      "institution_id": "inst-siaya-water",
+      "channel": "phone",
+      "address": "+254-700-000000",
+      "source_id": null,
+      "verified_at": null,
+      "verified_how": null,
+      "is_office_level": false,
+      "note": "Deliberately unverified. The engine must REFUSE to offer this. Exercised by tests/honesty.test.js #11."
+    }
+  ]
+}

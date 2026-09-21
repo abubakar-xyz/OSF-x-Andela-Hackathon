@@ -1,0 +1,77 @@
+{
+  "records": [
+    {
+      "id": "rec-bondo-status",
+      "entity_id": "ent-bondo-hc2",
+      "label": "Project status",
+      "verbatim": "Project status: Completed",
+      "value": "Completed",
+      "source_id": "src-ocp-2023",
+      "published_at": "2023-03-14",
+      "retrieved_at": "2026-09-19",
+      "claim_type": "reported_completion",
+      "limitations": ["Self-reported by the implementing agency", "Not independently inspected before publication"]
+    },
+    {
+      "id": "rec-bondo-completed-on",
+      "entity_id": "ent-bondo-hc2",
+      "label": "Reported complete",
+      "verbatim": "Reported complete 14 March 2023",
+      "value": "2023-03-14",
+      "source_id": "src-ocp-2023",
+      "published_at": "2023-03-14",
+      "retrieved_at": "2026-09-19",
+      "claim_type": "reported_completion"
+    },
+    {
+      "id": "rec-bondo-sum",
+      "entity_id": "ent-bondo-hc2",
+      "label": "Contract sum",
+      "verbatim": "Contract sum KES 41,200,000",
+      "value": 41200000,
+      "unit": "KES",
+      "source_id": "src-ocp-2023",
+      "published_at": "2023-03-14",
+      "retrieved_at": "2026-09-19",
+      "claim_type": "contract_award",
+      "limitations": ["A contract award is not a payment. This figure does not show money leaving the treasury."]
+    },
+    {
+      "id": "rec-bondo-variation",
+      "entity_id": "ent-bondo-hc2",
+      "label": "Scope varied",
+      "verbatim": "the scope of works for Bondo Sub-County Health Centre II is varied to exclude the maternity wing, with revised completion expected in the 2025/26 financial year",
+      "value": "Varied 18 April 2024 — maternity wing excluded, completion moved to 2025/26",
+      "source_id": "src-gazette-2024",
+      "published_at": "2024-04-18",
+      "retrieved_at": "2026-09-19",
+      "claim_type": "scope_change",
+      "supersedes": "rec-bondo-status",
+      "discoverable_only_on_challenge": true,
+      "note": "Held back from the first pass on purpose: this is the record the adversarial Check Again pass is designed to surface, and it downgrades the first verdict. See DESIGN.md §20."
+    },
+    {
+      "id": "rec-bondo-audit",
+      "entity_id": "ent-bondo-hc2",
+      "label": "Audit observation",
+      "verbatim": "Three facilities reported as complete in the 2022/23 return could not be confirmed as operational at the time of audit. Final payment certificates were not availed for review.",
+      "value": "Completion not confirmed at audit; payment certificates not produced",
+      "source_id": "src-auditor-2025",
+      "published_at": "2025-11-02",
+      "retrieved_at": "2026-09-19",
+      "claim_type": "audit_finding",
+      "limitations": ["The extract does not name individual facilities — the link to this project is inferential"]
+    },
+    {
+      "id": "rec-bondo-press",
+      "entity_id": "ent-bondo-hc2",
+      "label": "Reported locally",
+      "verbatim": "Residents say the facility has not admitted patients since construction slowed in 2023.",
+      "value": "No admissions reported since 2023",
+      "source_id": "src-press-2025",
+      "published_at": "2025-06-08",
+      "retrieved_at": "2026-09-19",
+      "claim_type": "reported_observation"
+    }
+  ]
+}
