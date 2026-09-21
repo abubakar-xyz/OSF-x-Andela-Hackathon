@@ -16,15 +16,10 @@ const HEAVY_MB = 407;   /* three.js, gzipped. Measured, not estimated. */
 
 export function canUpgrade() {
   if (typeof document === 'undefined') return false;
-  /* Never on a thin connection or a small device: this is a civic
-     product and Amina has 200MB left this week. §28 */
-  const tier = document.documentElement.className.match(/tier-(\w+)/)?.[1];
-  if (tier && tier !== 'full') return false;
+  if (prefersReducedMotion()) return false;
   const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   if (c?.saveData) return false;
-  if (c?.effectiveType && ['slow-2g', '2g', '3g'].includes(c.effectiveType)) return false;
-  if (navigator.deviceMemory && navigator.deviceMemory < 4) return false;
-  if (prefersReducedMotion()) return false;
+  if (c?.effectiveType && ['slow-2g', '2g'].includes(c.effectiveType)) return false;
   try {
     const cv = document.createElement('canvas');
     if (!(cv.getContext('webgl2') || cv.getContext('webgl'))) return false;
@@ -39,12 +34,13 @@ export function canUpgrade() {
 export function mountCharacter({ size = 168, motes = true, live = false, upgrade = true } = {}) {
   const flat = createAperture({ size, motes, live });
   const host = document.createElement('div');
-  host.style.cssText = 'display:grid;place-items:center';
+  host.style.cssText = 'display:grid;place-items:center;cursor:pointer;';
+  host.setAttribute('title', 'Wazi 3D Companion — Interactive Lens');
   host.appendChild(flat.el);
 
   let active = flat;
   let upgraded = false;
-  const pending = { state: null, energy: 0, motes: [], size, gaze: null };
+  const pending = { state: null, expression: null, energy: 0, motes: [], size, gaze: null };
 
   const handle = {
     el: host,
@@ -52,21 +48,44 @@ export function mountCharacter({ size = 168, motes = true, live = false, upgrade
     get state() { return active.state; },
 
     setState(n) { pending.state = n; active.setState(n); return handle; },
+    setExpression(n) { pending.expression = n; active.setExpression?.(n); return handle; },
     setEnergy(v) { pending.energy = v; active.setEnergy(v); return handle; },
     setMotes(l) { pending.motes = l; active.setMotes(l); return handle; },
     setSize(px) { pending.size = px; active.setSize(px); host.style.width = host.style.height = `${px}px`; return handle; },
     lookAt(x, y) { pending.gaze = [x, y]; active.lookAt?.(x, y); return handle; },
-    destroy() { active.destroy?.(); host.remove(); },
+    destroy() {
+      window.removeEventListener('pointermove', onPointerMove);
+      active.destroy?.();
+      host.remove();
+    },
   };
 
+  /* Interactive pointer gaze tracking: Wazi's eye tracks mouse / touch */
+  const onPointerMove = (e) => {
+    const rect = host.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const nx = Math.max(-1, Math.min(1, (e.clientX - cx) / (window.innerWidth * 0.45)));
+    const ny = Math.max(-1, Math.min(1, (e.clientY - cy) / (window.innerHeight * 0.45)));
+    handle.lookAt(nx, ny);
+  };
+  window.addEventListener('pointermove', onPointerMove, { passive: true });
+
+  /* Interactive touch / tap response */
+  host.addEventListener('click', () => {
+    if (active.state === 'resting') {
+      active.setState('attention');
+      setTimeout(() => { if (active.state === 'attention') active.setState('resting'); }, 1400);
+    }
+  });
+
   if (upgrade && canUpgrade()) {
-    /* Deliberately after first paint and after the app is interactive —
-       407KB must never sit between the person and Wazi's first word. */
     const begin = () => import('./avatar3d.js')
       .then(({ createAvatar3D }) => createAvatar3D({ size: pending.size, motes }))
       .then((rich) => {
-        /* Carry the current state across so the swap is invisible. */
+        /* Carry current state across smoothly */
         if (pending.state) rich.setState(pending.state);
+        if (pending.expression) rich.setExpression(pending.expression);
         rich.setEnergy(pending.energy);
         rich.setMotes(pending.motes);
         if (pending.gaze) rich.lookAt(...pending.gaze);
@@ -77,13 +96,10 @@ export function mountCharacter({ size = 168, motes = true, live = false, upgrade
         host.dispatchEvent(new CustomEvent('wazi:upgraded', { bubbles: true }));
       })
       .catch((err) => {
-        /* Staying flat is a correct outcome, not a failure to report to
-           the person. The character keeps working. */
-        console.warn('[wazi] staying on the flat aperture:', err?.message ?? err);
+        console.warn('[wazi] staying on flat aperture:', err?.message ?? err);
       });
 
-    if ('requestIdleCallback' in window) requestIdleCallback(begin, { timeout: 4000 });
-    else setTimeout(begin, 1800);
+    setTimeout(begin, 60);
   }
 
   return handle;

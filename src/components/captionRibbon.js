@@ -39,16 +39,39 @@ export function CaptionRibbon({ onCorrect } = {}) {
   function edit(line) {
     clear(host);
     const input = el('input', { class: 'cap-edit', value: line.text, 'aria-label': 'Correct what you said' });
+    let committed = false;
+
     const commit = () => {
+      if (committed) return;
+      committed = true;
+      input.removeEventListener('blur', onBlur);
       const next = input.value.trim();
       if (next && next !== line.text) { line.text = next; onCorrect?.(next); }
       paint();
     };
+
+    const cancel = () => {
+      if (committed) return;
+      committed = true;
+      input.removeEventListener('blur', onBlur);
+      paint();
+    };
+
+    const onBlur = () => {
+      if (!committed) commit();
+    };
+
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') commit();
-      if (e.key === 'Escape') paint();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cancel();
+      }
     });
-    input.addEventListener('blur', commit);
+    input.addEventListener('blur', onBlur);
     host.append(input,
       el('button', { class: 'chip', type: 'button', text: 'Use this instead', onmousedown: (e) => e.preventDefault(), onclick: commit }));
     input.focus(); input.select();

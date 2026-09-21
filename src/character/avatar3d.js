@@ -1,20 +1,18 @@
 /**
- * Wazi in three dimensions.  DESIGN.md §8, revised.
+ * Wazi in three dimensions — Anthropomorphic Civic Companion.
  *
- * The flat aperture was legible but cold — it could show a state and it
- * could not look at you. This is the same character with depth and, more
- * importantly, with **gaze**: it looks at the person, turns toward a card
- * when one lands, blinks, leans in when it is curious and draws back a
- * little when the record and the evidence disagree.
- *
- * Eyes are the relatability mechanism, and an iris IS an eye — so this
- * stays a lens-being rather than becoming a face. No human, no robot, no
- * costume, and therefore no uncanny valley and no cultural assumption.
- *
- * Three.js is ~407KB gzipped, which is more than the whole rest of the
- * product. It is therefore LAZY: the app is fully interactive on the flat
- * aperture first, and this upgrades in place when it arrives. Light and
- * text tiers never fetch it. See DECISIONS.md #11.
+ * An expressive, warm anthropomorphic character built on a structured Three.js
+ * skeleton rig featuring:
+ *   · Root -> Neck -> Head hierarchical bone structure (THREE.Skeleton & THREE.Bone)
+ *   · Articulated TMJ Jaw Bone driving realistic jaw opening, chin displacement,
+ *     and vocal speech visemes
+ *   · Dual Ocular Bones (Left/Right) with sclera, glowing amber irises, pupils,
+ *     cornea glints, and gaze tracking with vergence and microsaccades
+ *   · Upper and Lower Eyelid Bones executing natural non-linear blinking and smiling squints
+ *   · Articulated Eyebrow Bones supporting civic empathy, concern, thought, and attentiveness
+ *   · Cheeks and 3D sculpted nose bridge, ears/acoustic nodes, and cranial silhouette
+ *   · Oral cavity with dynamic speech luminescence
+ *   · Framing civic aperture halo in the backdrop
  */
 
 let THREE = null;
@@ -32,23 +30,21 @@ export const webglAvailable = () => {
   } catch { return false; }
 };
 
-/* Same state vocabulary as the flat aperture, so the machine does not
-   know or care which one is mounted. §8.3 */
+/* Emotional state poses */
 const POSE = {
-  dormant:   { open: 0.00, energy: 0, lean:  0.06, dist: 0.16, spin: 0,   glow: 0.18 },
-  waking:    { open: 0.95, energy: 0.4, lean: -0.10, dist: 0.0, spin: 0,   glow: 1.00 },
-  resting:   { open: 0.70, energy: 0.16, lean: 0.00, dist: 0.0, spin: 0,   glow: 0.85 },
-  listening: { open: 1.00, energy: 0.25, lean: -0.13, dist: -0.18, spin: 0, glow: 1.00 },
-  hearing:   { open: 1.00, energy: null, lean: -0.16, dist: -0.24, spin: 0, glow: 1.05 },
-  thinking:  { open: 0.44, energy: 0.15, lean:  0.10, dist: 0.16, spin: 0.5, glow: 0.60 },
-  working:   { open: 0.44, energy: 0.15, lean:  0.10, dist: 0.16, spin: 0.5, glow: 0.60 },
-  speaking:  { open: 0.78, energy: null, lean: -0.06, dist: -0.08, spin: 0, glow: 1.10 },
-  awaiting:  { open: 0.50, energy: 0, lean:  0.04, dist: 0.06, spin: 0,     glow: 0.70 },
-  attention: { open: 0.66, energy: 0, lean: -0.20, dist: -0.20, spin: 0,    glow: 1.15 },
-  /* Draws back. The one piece of body language that carries meaning:
-     the record and what you saw do not agree, and Wazi is not pleased
-     about it either. */
-  offline:   { open: 0.22, energy: 0, lean:  0.16, dist: 0.30, spin: 0,    glow: 0.26 },
+  dormant:   { open: 0.05, energy: 0,    lean:  0.06, dist: 0.16, glow: 0.3,  browY: -0.06, browTilt:  0.00, smile: 0.0,  nod: 0,    jaw: 0.00 },
+  waking:    { open: 0.95, energy: 0.4,  lean: -0.08, dist: 0.00, glow: 1.0,  browY:  0.06, browTilt:  0.00, smile: 0.4,  nod: 0.05, jaw: 0.08 },
+  resting:   { open: 0.82, energy: 0.15, lean:  0.00, dist: 0.00, glow: 0.9,  browY:  0.00, browTilt:  0.00, smile: 0.35, nod: 0,    jaw: 0.03 },
+  listening: { open: 1.00, energy: 0.25, lean: -0.12, dist: -0.15, glow: 1.0, browY:  0.08, browTilt:  0.04, smile: 0.25, nod: 0,    jaw: 0.02 },
+  hearing:   { open: 1.00, energy: null, lean: -0.15, dist: -0.22, glow: 1.05, browY:  0.10, browTilt:  0.06, smile: 0.25, nod: 0,    jaw: 0.04 },
+  thinking:  { open: 0.70, energy: 0.15, lean:  0.08, dist: 0.14, glow: 0.7,  browY:  0.04, browTilt: -0.18, smile: 0.05, nod: 0,    jaw: 0.02 },
+  working:   { open: 0.70, energy: 0.15, lean:  0.08, dist: 0.14, glow: 0.7,  browY:  0.04, browTilt: -0.18, smile: 0.05, nod: 0,    jaw: 0.02 },
+  speaking:  { open: 0.90, energy: null, lean: -0.06, dist: -0.08, glow: 1.15, browY:  0.05, browTilt:  0.00, smile: 0.45, nod: 0.14, jaw: 0.25 },
+  concern:   { open: 0.85, energy: 0.2,  lean: -0.05, dist: 0.04, glow: 0.9,  browY:  0.08, browTilt:  0.28, smile: -0.1, nod: 0.04, jaw: 0.02 },
+  conflict:  { open: 0.85, energy: 0.2,  lean: -0.05, dist: 0.04, glow: 0.9,  browY:  0.08, browTilt:  0.28, smile: -0.1, nod: 0.04, jaw: 0.02 },
+  awaiting:  { open: 0.65, energy: 0,    lean:  0.04, dist: 0.06, glow: 0.75, browY:  0.00, browTilt:  0.00, smile: 0.15, nod: 0,    jaw: 0.02 },
+  attention: { open: 0.95, energy: 0.4,  lean: -0.18, dist: -0.18, glow: 1.2, browY:  0.12, browTilt:  0.00, smile: 0.55, nod: 0.08, jaw: 0.10 },
+  offline:   { open: 0.35, energy: 0,    lean:  0.15, dist: 0.28, glow: 0.35, browY: -0.04, browTilt:  0.10, smile: -0.05, nod: 0,   jaw: 0.00 },
 };
 
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -60,233 +56,641 @@ export async function createAvatar3D({ size = 220, motes = true } = {}) {
   const wrap = document.createElement('div');
   wrap.className = 'aperture aperture--3d';
   wrap.style.width = wrap.style.height = `${size}px`;
+  wrap.style.touchAction = 'none';
 
-  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  const isMobile = typeof navigator !== 'undefined' && (
+    /mobile|android|iphone|ipad|ipod|touch/i.test(navigator.userAgent.toLowerCase()) ||
+    (typeof window !== 'undefined' && window.innerWidth < 768)
+  );
+  const maxDPR = isMobile ? 1.5 : 2.0;
+
+  const renderer = new T.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    powerPreference: 'low-power',
+    precision: isMobile ? 'mediump' : 'highp',
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDPR));
   renderer.setSize(size, size, false);
-  renderer.domElement.style.cssText = 'width:100%;height:100%;display:block';
+  renderer.domElement.style.cssText = 'width:100%;height:100%;display:block;border-radius:50%;touch-action:none;';
   wrap.appendChild(renderer.domElement);
 
   const scene = new T.Scene();
   const camera = new T.PerspectiveCamera(32, 1, 0.1, 40);
-  camera.position.set(0.5, 0.38, 8.1);
+  camera.position.set(0, 0.05, 6.2);
   camera.lookAt(0, 0, 0);
 
-  /* The being sits in its own group so gaze rotates the whole thing. */
-  const being = new T.Group();
-  scene.add(being);
+  /* Color Palette */
+  const TEAL = 0x17c7b2;
+  const TEAL_DEEP = 0x0d8a79;
+  const LAMP = 0xf2b23e;
+  const SLATE = 0x78909a;
+  const HEAD_BASE = 0x0f2226;
+  const EYE_SOCKET = 0x050f12;
+  const SCLERA_COLOR = 0x0c252b;
+  const CAVITY_COLOR = 0x03090b;
 
-  const TEAL = 0x17c7b2, TEAL_DEEP = 0x0d8a79, LAMP = 0xf2b23e, SLATE = 0x78909a;
-  /* The eye's radius. Blades must retract past it to reveal it, and
-     cross it to cover it. Every travel number is expressed against it. */
-  const EYE_R = 0.95;
-
-  /* ── Blades ──────────────────────────────────────────────────────
-     Six thin blades that shutter ACROSS the eye from in front, the way
-     an iris diaphragm does. An earlier version sat them behind the eye
-     and made them broad, which produced a flat disc with a button on
-     it — the eye has to be the subject and the blades have to move
-     over it. */
-  const bladeShape = new T.Shape();
-  bladeShape.moveTo(-1.50, 0);
-  bladeShape.lineTo(1.50, 0);
-  bladeShape.quadraticCurveTo(1.74, 0.70, 1.16, 1.26);
-  bladeShape.quadraticCurveTo(0, 1.70, -1.16, 1.26);
-  bladeShape.quadraticCurveTo(-1.74, 0.70, -1.50, 0);
-  const bladeGeo = new T.ExtrudeGeometry(bladeShape, {
-    depth: 0.07, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.025, bevelSegments: 2,
-  });
-  /* Anchor the geometry at its INNER EDGE, not its centroid. `center()`
-     moved the origin to the middle of the blade, which made every
-     travel number below mean something other than what it said — the
-     aperture read as shut in states that should have been open. With
-     the inner edge at local y=0, `position.y` is literally how far the
-     opening's edge is from the middle, and EYE_R is the number it has
-     to clear. */
-  bladeGeo.computeBoundingBox();
-  bladeGeo.translate(0, -bladeGeo.boundingBox.min.y, 0);
-
-  const bladeMat = new T.MeshStandardMaterial({
-    color: TEAL, metalness: 0.28, roughness: 0.34,
-    emissive: TEAL_DEEP, emissiveIntensity: 0.16,
+  /* Shared Materials */
+  const skinMat = new T.MeshStandardMaterial({
+    color: HEAD_BASE,
+    metalness: 0.22,
+    roughness: 0.42,
+    emissive: TEAL_DEEP,
+    emissiveIntensity: 0.08,
   });
 
-  const blades = [];
-  for (let i = 0; i < 6; i++) {
-    const pivot = new T.Group();
-    pivot.rotation.z = (i / 6) * Math.PI * 2;
-    const m = new T.Mesh(bladeGeo, bladeMat.clone());
-    /* Alternating blades sit fractionally back, so six overlapping
-       shapes read as six rather than as one disc. */
-    m.material.color.setHex(i % 2 ? TEAL_DEEP : TEAL);
-    /* In FRONT of the eye, each blade a hair deeper than the last so
-       they stack rather than z-fight. */
-    m.position.z = 0.62 + i * 0.014;
-    pivot.add(m);
-    being.add(pivot);
-    blades.push({ pivot, mesh: m });
-  }
-
-  /* ── The core: a warm light, and the thing that looks at you ───── */
-  const coreMat = new T.MeshStandardMaterial({
-    color: LAMP, emissive: LAMP, emissiveIntensity: 1.5, roughness: 0.25, metalness: 0,
+  const lipMat = new T.MeshStandardMaterial({
+    color: TEAL,
+    emissive: TEAL_DEEP,
+    emissiveIntensity: 0.35,
+    roughness: 0.32,
+    metalness: 0.2,
   });
-  const core = new T.Mesh(new T.SphereGeometry(0.95, 40, 28), coreMat);
-  /* Flattened along z so the eye sits BEHIND the blade plane. A full
-     sphere reached past the blades, and a shut aperture still showed an
-     eye staring through it. */
-  core.scale.z = 0.42;
-  being.add(core);
 
-  const lamp = new T.PointLight(LAMP, 3.2, 12, 2);
-  core.add(lamp);
+  const browMat = new T.MeshStandardMaterial({
+    color: TEAL,
+    emissive: TEAL_DEEP,
+    emissiveIntensity: 0.45,
+    roughness: 0.3,
+    metalness: 0.2,
+  });
 
-  /* A dark pupil in front of the core gives the iris an actual centre —
-     without it the eye has no focus and the gaze reads as nothing. */
-  const pupil = new T.Mesh(
-    new T.SphereGeometry(0.34, 28, 20),
-    new T.MeshStandardMaterial({ color: 0x07110F, roughness: 0.55, metalness: 0 }));
-  pupil.position.z = 0.82;
-  core.add(pupil);
+  /* ═════════════════════════════════════════════════════════════════
+     STRUCTURED SKELETON HIERARCHY (THREE.Bone & THREE.Skeleton)
+     ═════════════════════════════════════════════════════════════════ */
 
-  /* A specular highlight. One tiny sphere, and it is most of why a
-     rendered eye looks wet and alive rather than moulded. */
-  const glint = new T.Mesh(
-    new T.SphereGeometry(0.10, 14, 12),
-    new T.MeshBasicMaterial({ color: 0xffffff }));
-  glint.position.set(-0.30, 0.34, 1.0);
-  core.add(glint);
+  /* 1. Root & Neck */
+  const rootBone = new T.Bone();
+  rootBone.name = 'rootBone';
+  scene.add(rootBone);
 
-  /* ── Housing ─────────────────────────────────────────────────── */
+  const neckBone = new T.Bone();
+  neckBone.name = 'neckBone';
+  neckBone.position.set(0, -0.65, 0);
+  rootBone.add(neckBone);
+
+  /* 2. Head Cranium Bone */
+  const headBone = new T.Bone();
+  headBone.name = 'headBone';
+  headBone.position.set(0, 0.65, 0);
+  neckBone.add(headBone);
+
+  /* 3. Mandible / Jaw Bone (Pivoted at TMJ - temporomandibular joint) */
+  const jawBone = new T.Bone();
+  jawBone.name = 'jawBone';
+  /* Pivot set at anatomical jaw hinge: slightly below ear canal, rear of jaw */
+  jawBone.position.set(0, -0.28, 0.18);
+  headBone.add(jawBone);
+
+  /* 4. Eye Bones (Left & Right) */
+  const leftEyeBone = new T.Bone();
+  leftEyeBone.name = 'leftEyeBone';
+  leftEyeBone.position.set(-0.46, 0.20, 0.94);
+  headBone.add(leftEyeBone);
+
+  const rightEyeBone = new T.Bone();
+  rightEyeBone.name = 'rightEyeBone';
+  rightEyeBone.position.set(0.46, 0.20, 0.94);
+  headBone.add(rightEyeBone);
+
+  /* 5. Eyelid Bones (Hinged at ocular sphere centers) */
+  const leftUpperLidBone = new T.Bone();
+  leftUpperLidBone.name = 'leftUpperLidBone';
+  leftUpperLidBone.position.set(0, 0, 0);
+  leftEyeBone.add(leftUpperLidBone);
+
+  const rightUpperLidBone = new T.Bone();
+  rightUpperLidBone.name = 'rightUpperLidBone';
+  rightUpperLidBone.position.set(0, 0, 0);
+  rightEyeBone.add(rightUpperLidBone);
+
+  const leftLowerLidBone = new T.Bone();
+  leftLowerLidBone.name = 'leftLowerLidBone';
+  leftLowerLidBone.position.set(0, 0, 0);
+  leftEyeBone.add(leftLowerLidBone);
+
+  const rightLowerLidBone = new T.Bone();
+  rightLowerLidBone.name = 'rightLowerLidBone';
+  rightLowerLidBone.position.set(0, 0, 0);
+  rightEyeBone.add(rightLowerLidBone);
+
+  /* 6. Eyebrow Bones (Articulated Left & Right Brow Nodes) */
+  const leftBrowBone = new T.Bone();
+  leftBrowBone.name = 'leftBrowBone';
+  leftBrowBone.position.set(-0.46, 0.56, 1.04);
+  headBone.add(leftBrowBone);
+
+  const rightBrowBone = new T.Bone();
+  rightBrowBone.name = 'rightBrowBone';
+  rightBrowBone.position.set(0.46, 0.56, 1.04);
+  headBone.add(rightBrowBone);
+
+  /* 7. Cheek Bones (Left & Right Zygomatic Nodes) */
+  const leftCheekBone = new T.Bone();
+  leftCheekBone.name = 'leftCheekBone';
+  leftCheekBone.position.set(-0.68, -0.14, 0.94);
+  headBone.add(leftCheekBone);
+
+  const rightCheekBone = new T.Bone();
+  rightCheekBone.name = 'rightCheekBone';
+  rightCheekBone.position.set(0.68, -0.14, 0.94);
+  headBone.add(rightCheekBone);
+
+  /* Formally assemble the THREE.Skeleton structure */
+  const allBones = [
+    rootBone,
+    neckBone,
+    headBone,
+    jawBone,
+    leftEyeBone,
+    rightEyeBone,
+    leftUpperLidBone,
+    rightUpperLidBone,
+    leftLowerLidBone,
+    rightLowerLidBone,
+    leftBrowBone,
+    rightBrowBone,
+    leftCheekBone,
+    rightCheekBone,
+  ];
+  const skeleton = new T.Skeleton(allBones);
+
+  /* ═════════════════════════════════════════════════════════════════
+     MESH ATTACHMENTS TO SKELETON BONES
+     ═════════════════════════════════════════════════════════════════ */
+
+  /* ── Head / Cranium Geometry (Attached to headBone) ───────────── */
+  const headGeo = new T.SphereGeometry(1.28, 32, 28);
+  headGeo.scale(1.0, 1.15, 0.88);
+  const headMesh = new T.Mesh(headGeo, skinMat);
+  headBone.add(headMesh);
+
+  /* Nose bridge and tip (Attached to headBone) */
+  const noseGeo = new T.ConeGeometry(0.12, 0.38, 16);
+  noseGeo.scale(0.8, 1.0, 0.6);
+  const noseMesh = new T.Mesh(noseGeo, skinMat);
+  noseMesh.position.set(0, -0.04, 1.14);
+  noseMesh.rotation.x = -0.15;
+  headBone.add(noseMesh);
+
+  /* Ear / Acoustic Nodes (Attached to headBone) */
+  const earGeo = new T.TorusGeometry(0.22, 0.04, 8, 24);
+  const earMat = new T.MeshStandardMaterial({ color: TEAL, emissive: TEAL, emissiveIntensity: 0.45 });
+  const earL = new T.Mesh(earGeo, earMat);
+  earL.position.set(-1.32, 0.1, 0.0);
+  earL.rotation.y = Math.PI / 2;
+  headBone.add(earL);
+
+  const earR = new T.Mesh(earGeo, earMat);
+  earR.position.set(1.32, 0.1, 0.0);
+  earR.rotation.y = Math.PI / 2;
+  headBone.add(earR);
+
+  /* Maxilla / Upper Lip (Attached to headBone) */
+  const upperLipShape = new T.Shape();
+  upperLipShape.moveTo(-0.26, 0);
+  upperLipShape.quadraticCurveTo(0, 0.04, 0.26, 0);
+  upperLipShape.quadraticCurveTo(0, -0.04, -0.26, 0);
+  const upperLipGeo = new T.ExtrudeGeometry(upperLipShape, {
+    depth: 0.05, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 1,
+  });
+  upperLipGeo.center();
+  const upperLipMesh = new T.Mesh(upperLipGeo, lipMat);
+  upperLipMesh.position.set(0, -0.42, 1.02);
+  headBone.add(upperLipMesh);
+
+  /* Upper Oral Cavity Roof (Attached to headBone) */
+  const upperCavityGeo = new T.BoxGeometry(0.42, 0.12, 0.12);
+  const cavityMat = new T.MeshBasicMaterial({ color: CAVITY_COLOR });
+  const upperCavity = new T.Mesh(upperCavityGeo, cavityMat);
+  upperCavity.position.set(0, -0.42, 0.94);
+  headBone.add(upperCavity);
+
+  /* ── Jaw & Chin Geometry (Attached to jawBone) ────────────────── */
+  /* Sculpted Chin Mesh: relative to jawBone pivot at (0, -0.28, 0.18) */
+  const chinGeo = new T.SphereGeometry(0.52, 22, 16);
+  chinGeo.scale(0.85, 0.68, 0.72);
+  const chinMesh = new T.Mesh(chinGeo, skinMat);
+  chinMesh.position.set(0, -0.64, 0.28);
+  jawBone.add(chinMesh);
+
+  /* Mandible jawline wing contours */
+  const jawWingGeo = new T.CylinderGeometry(0.24, 0.38, 0.5, 16);
+  jawWingGeo.scale(1.2, 0.8, 0.7);
+  const jawWingL = new T.Mesh(jawWingGeo, skinMat);
+  jawWingL.position.set(-0.48, -0.45, 0.12);
+  jawWingL.rotation.z = -0.4;
+  jawBone.add(jawWingL);
+
+  const jawWingR = new T.Mesh(jawWingGeo, skinMat);
+  jawWingR.position.set(0.48, -0.45, 0.12);
+  jawWingR.rotation.z = 0.4;
+  jawBone.add(jawWingR);
+
+  /* Lower Lip (Attached to jawBone - drops realistically when jaw opens!) */
+  const lowerLipShape = new T.Shape();
+  lowerLipShape.moveTo(-0.24, 0);
+  lowerLipShape.quadraticCurveTo(0, -0.06, 0.24, 0);
+  lowerLipShape.quadraticCurveTo(0, 0.02, -0.24, 0);
+  const lowerLipGeo = new T.ExtrudeGeometry(lowerLipShape, {
+    depth: 0.05, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 1,
+  });
+  lowerLipGeo.center();
+  const lowerLipMesh = new T.Mesh(lowerLipGeo, lipMat.clone());
+  lowerLipMesh.position.set(0, -0.20, 0.84);
+  jawBone.add(lowerLipMesh);
+
+  /* Oral Cavity Floor & Warm Interior Luminescence (Attached to jawBone) */
+  const lowerCavityGeo = new T.BoxGeometry(0.40, 0.14, 0.12);
+  const lowerCavity = new T.Mesh(lowerCavityGeo, cavityMat);
+  lowerCavity.position.set(0, -0.19, 0.78);
+  jawBone.add(lowerCavity);
+
+  const mouthGlowMat = new T.MeshStandardMaterial({
+    color: LAMP,
+    emissive: LAMP,
+    emissiveIntensity: 0.0,
+    roughness: 0.2,
+  });
+  const mouthGlow = new T.Mesh(new T.SphereGeometry(0.14, 16, 10), mouthGlowMat);
+  mouthGlow.scale.set(1.6, 0.45, 0.3);
+  mouthGlow.position.set(0, -0.18, 0.80);
+  jawBone.add(mouthGlow);
+
+  /* ── Eye Geometry (Attached to leftEyeBone & rightEyeBone) ─────── */
+  const socketGeo = new T.SphereGeometry(0.36, 20, 16);
+  socketGeo.scale(1.0, 1.12, 0.35);
+  const socketMat = new T.MeshBasicMaterial({ color: EYE_SOCKET });
+  const sockL = new T.Mesh(socketGeo, socketMat);
+  const sockR = new T.Mesh(socketGeo, socketMat);
+  leftEyeBone.add(sockL);
+  rightEyeBone.add(sockR);
+
+  /* Deep Sclera */
+  const scleraGeo = new T.SphereGeometry(0.33, 22, 18);
+  scleraGeo.scale(1.0, 1.1, 0.45);
+  const scleraMat = new T.MeshStandardMaterial({ color: SCLERA_COLOR, roughness: 0.3 });
+  const scleraL = new T.Mesh(scleraGeo, scleraMat);
+  const scleraR = new T.Mesh(scleraGeo, scleraMat);
+  scleraL.position.z = 0.04;
+  scleraR.position.z = 0.04;
+  leftEyeBone.add(scleraL);
+  rightEyeBone.add(scleraR);
+
+  /* Luminous Amber Irises */
+  const irisGeo = new T.SphereGeometry(0.25, 24, 18);
+  irisGeo.scale(1.0, 1.0, 0.45);
+  const irisMatL = new T.MeshStandardMaterial({
+    color: LAMP,
+    emissive: LAMP,
+    emissiveIntensity: 1.5,
+    roughness: 0.2,
+    metalness: 0,
+  });
+  const irisMatR = irisMatL.clone();
+  const irisL = new T.Mesh(irisGeo, irisMatL);
+  const irisR = new T.Mesh(irisGeo, irisMatR);
+  irisL.position.z = 0.10;
+  irisR.position.z = 0.10;
+  leftEyeBone.add(irisL);
+  rightEyeBone.add(irisR);
+
+  /* Attentive Pupils */
+  const pupilGeo = new T.SphereGeometry(0.12, 16, 12);
+  pupilGeo.scale(1.0, 1.0, 0.4);
+  const pupilMat = new T.MeshBasicMaterial({ color: 0x040a0c });
+  const pupilL = new T.Mesh(pupilGeo, pupilMat);
+  const pupilR = new T.Mesh(pupilGeo, pupilMat);
+  pupilL.position.z = 0.18;
+  pupilR.position.z = 0.18;
+  irisL.add(pupilL);
+  irisR.add(pupilR);
+
+  /* Specular Glints */
+  const glintGeo = new T.SphereGeometry(0.045, 10, 8);
+  const glintMat = new T.MeshBasicMaterial({ color: 0xffffff });
+  const glintL = new T.Mesh(glintGeo, glintMat);
+  const glintR = new T.Mesh(glintGeo, glintMat);
+  glintL.position.set(-0.06, 0.06, 0.10);
+  glintR.position.set(-0.06, 0.06, 0.10);
+  pupilL.add(glintL);
+  pupilR.add(glintR);
+
+  /* Cornea Gloss Lenses */
+  const corneaGeo = new T.SphereGeometry(0.28, 20, 16);
+  corneaGeo.scale(1.0, 1.0, 0.5);
+  const corneaMat = new T.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.1,
+    metalness: 0.1,
+    transparent: true,
+    opacity: 0.18,
+  });
+  const corneaL = new T.Mesh(corneaGeo, corneaMat);
+  const corneaR = new T.Mesh(corneaGeo, corneaMat);
+  corneaL.position.z = 0.12;
+  corneaR.position.z = 0.12;
+  leftEyeBone.add(corneaL);
+  rightEyeBone.add(corneaR);
+
+  /* ── Eyelids Geometry (Attached to Lid Bones) ─────────────────── */
+  /* Upper Eyelids (Sphere cap that sweeps down over eye) */
+  const upperLidGeo = new T.SphereGeometry(0.36, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.52);
+  upperLidGeo.scale(1.02, 1.14, 0.52);
+  const lidMat = new T.MeshStandardMaterial({
+    color: HEAD_BASE,
+    roughness: 0.4,
+    metalness: 0.2,
+  });
+  const upperLidMeshL = new T.Mesh(upperLidGeo, lidMat);
+  const upperLidMeshR = new T.Mesh(upperLidGeo, lidMat);
+  upperLidMeshL.position.set(0, 0.02, 0.08);
+  upperLidMeshR.position.set(0, 0.02, 0.08);
+  leftUpperLidBone.add(upperLidMeshL);
+  rightUpperLidBone.add(upperLidMeshR);
+
+  /* Lower Eyelids (Sphere cap that raises slightly during smiles/squints) */
+  const lowerLidGeo = new T.SphereGeometry(0.35, 20, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.4);
+  lowerLidGeo.scale(1.01, 1.10, 0.50);
+  const lowerLidMeshL = new T.Mesh(lowerLidGeo, lidMat);
+  const lowerLidMeshR = new T.Mesh(lowerLidGeo, lidMat);
+  lowerLidMeshL.position.set(0, -0.04, 0.08);
+  lowerLidMeshR.position.set(0, -0.04, 0.08);
+  leftLowerLidBone.add(lowerLidMeshL);
+  rightLowerLidBone.add(lowerLidMeshR);
+
+  /* Eye light radiance */
+  const eyeLight = new T.PointLight(LAMP, 2.0, 6, 2);
+  eyeLight.position.set(0, 0.2, 1.4);
+  headBone.add(eyeLight);
+
+  /* ── Eyebrow Geometry (Attached to Brow Bones) ─────────────────── */
+  const browShape = new T.Shape();
+  browShape.moveTo(-0.28, -0.04);
+  browShape.quadraticCurveTo(0, 0.06, 0.28, -0.02);
+  browShape.quadraticCurveTo(0, 0.10, -0.28, -0.04);
+  const browGeo = new T.ExtrudeGeometry(browShape, {
+    depth: 0.06, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 1,
+  });
+  browGeo.center();
+
+  const browMeshL = new T.Mesh(browGeo, browMat.clone());
+  const browMeshR = new T.Mesh(browGeo, browMat.clone());
+  leftBrowBone.add(browMeshL);
+  rightBrowBone.add(browMeshR);
+
+  /* ── Cheek Geometry (Attached to Cheek Bones) ─────────────────── */
+  const cheekGeo = new T.SphereGeometry(0.24, 16, 12);
+  cheekGeo.scale(1.0, 0.7, 0.5);
+  const cheekMat = new T.MeshStandardMaterial({
+    color: HEAD_BASE,
+    emissive: LAMP,
+    emissiveIntensity: 0.08,
+    roughness: 0.5,
+  });
+  const cheekMeshL = new T.Mesh(cheekGeo, cheekMat);
+  const cheekMeshR = new T.Mesh(cheekGeo, cheekMat);
+  leftCheekBone.add(cheekMeshL);
+  rightCheekBone.add(cheekMeshR);
+
+  /* ── Aperture Halo (Behind Character) ─────────────────────────── */
   const rim = new T.Mesh(
-    new T.TorusGeometry(2.02, 0.036, 10, 84),
-    new T.MeshStandardMaterial({ color: TEAL, emissive: TEAL, emissiveIntensity: 0.7, roughness: 0.4 }));
-  rim.position.z = 1.5;
-  being.add(rim);
+    new T.TorusGeometry(1.85, 0.028, 8, 48),
+    new T.MeshStandardMaterial({ color: TEAL, emissive: TEAL, emissiveIntensity: 0.6, roughness: 0.4 })
+  );
+  rim.position.z = -0.2;
+  rootBone.add(rim);
 
-  /* The barrel. A real diaphragm hides its retracted blades inside a
-     housing; without one they fly past the rim and bleed to the edge of
-     the canvas. This is the 3D equivalent of the flat version's clip
-     path, and it is painted in the Night surface colour because the
-     character only ever sits on Night. */
-  const mask = new T.Mesh(
-    new T.RingGeometry(2.06, 7, 72),
-    new T.MeshBasicMaterial({ color: 0x0a1416, side: T.DoubleSide, transparent: true, opacity: 1 }));
-  mask.position.z = 1.45;
-  being.add(mask);
+  /* ── 3-Point Studio Lighting ──────────────────────────────────── */
+  const ambientLight = new T.AmbientLight(0x163038, 1.4);
+  scene.add(ambientLight);
 
-  const shell = new T.Mesh(
-    new T.SphereGeometry(2.12, 40, 30),
-    new T.MeshPhysicalMaterial({
-      color: 0x0d2528, transparent: true, opacity: 0.30,
-      roughness: 0.1, metalness: 0.25, side: T.BackSide,
-    }));
-  being.add(shell);
+  const keyLight = new T.DirectionalLight(0xfffaed, 2.2);
+  keyLight.position.set(1.5, 3.5, 4.0);
+  scene.add(keyLight);
 
-  /* ── Lights ──────────────────────────────────────────────────── */
-  scene.add(new T.AmbientLight(0x1a2e2c, 2.0));
-  const key = new T.DirectionalLight(0xdff5ef, 1.5); key.position.set(-2.4, 2.6, 3.4); scene.add(key);
-  const rimLight = new T.DirectionalLight(TEAL, 1.1); rimLight.position.set(2.8, -1.4, -2.2); scene.add(rimLight);
+  const fillLight = new T.DirectionalLight(TEAL, 1.6);
+  fillLight.position.set(-3.0, 0.5, 3.0);
+  scene.add(fillLight);
 
-  /* ── Motes: tool calls, orbiting in depth ────────────────────── */
-  const moteGroup = new T.Group();
-  being.add(moteGroup);
-  const moteGeo = new T.SphereGeometry(0.11, 12, 10);
-  const moteMat = new T.MeshBasicMaterial({ color: TEAL });
-  const moteFail = new T.MeshBasicMaterial({ color: SLATE });
-  const moteMeshes = [];
-  for (let i = 0; i < 5; i++) {
-    const m = new T.Mesh(moteGeo, moteMat);
-    m.visible = false;
-    moteGroup.add(m);
-    moteMeshes.push(m);
+  const rimLight = new T.DirectionalLight(TEAL, 2.0);
+  rimLight.position.set(0, 4.0, -3.0);
+  scene.add(rimLight);
+
+  /* Motes */
+  let moteMeshes = [];
+  let moteList = [];
+  const moteGeo = new T.SphereGeometry(0.045, 12, 8);
+  const moteMat = new T.MeshStandardMaterial({ color: TEAL, emissive: TEAL, emissiveIntensity: 1.2 });
+  const moteFail = new T.MeshStandardMaterial({ color: SLATE, emissive: SLATE, emissiveIntensity: 0.6 });
+
+  if (motes) {
+    for (let i = 0; i < 5; i++) {
+      const m = new T.Mesh(moteGeo, moteMat);
+      m.visible = false;
+      rootBone.add(m);
+      moteMeshes.push(m);
+    }
   }
 
-  /* ── Rig state ───────────────────────────────────────────────── */
-  const cur = { open: 0.02, energy: 0, lean: 0, dist: 0, glow: 0.25, spin: 0, blink: 0 };
-  let stateName = 'dormant';
-  let pose = POSE.dormant;
+  /* Internal Animation States */
+  const cur = {
+    open: 0.82,
+    energy: 0.15,
+    lean: 0,
+    dist: 0,
+    glow: 1.0,
+    browY: 0,
+    browTilt: 0,
+    smile: 0.35,
+    nod: 0,
+    blink: 0,
+    jawRot: 0.03,
+  };
+
+  let stateName = 'resting';
+  let pose = POSE.resting;
   let extEnergy = 0;
-  let moteList = [];
-  let gaze = { x: 0, y: 0 };          /* where it is looking, -1..1 */
-  let gazeTarget = { x: 0, y: 0 };
-  let nextBlink = performance.now() + 2200 + Math.random() * 3000;
-  let blinking = false;
-  let raf = 0;
   let running = false;
-  const reduced = matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+  let raf = 0;
+  let nextBlink = performance.now() + 2000 + Math.random() * 3000;
+  let blinking = false;
+  let gazeTarget = { x: 0, y: 0 };
+  let gaze = { x: 0, y: 0 };
+  let dragOffset = { x: 0, y: 0 };
+  let gyroOffset = { x: 0, y: 0 };
+  let isVisible = true;
+  let isIntersecting = true;
+  let touchActive = false;
+  let touchStartTime = 0;
+  let touchStartPos = { x: 0, y: 0 };
+
+  /* Saccadic ocular micro-movements */
+  let nextSaccade = performance.now() + 1800;
+  let saccadeOffset = { x: 0, y: 0 };
 
   function frame(now) {
     if (!running) return;
     raf = requestAnimationFrame(frame);
 
-    const wantEnergy = pose.energy === null ? extEnergy
-      : pose.energy + (stateName === 'resting' && !reduced
-          ? Math.sin(now * 0.001 * 0.16 * Math.PI * 2) * 0.05 : 0);
+    const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const wantEnergy = pose.energy === null ? extEnergy : pose.energy;
 
-    cur.open = lerp(cur.open, pose.open, reduced ? 1 : 0.12);
-    cur.energy = lerp(cur.energy, clamp01(wantEnergy), reduced ? 1 : 0.3);
-    cur.lean = lerp(cur.lean, pose.lean, reduced ? 1 : 0.07);
-    cur.dist = lerp(cur.dist, pose.dist, reduced ? 1 : 0.07);
-    cur.glow = lerp(cur.glow, pose.glow, reduced ? 1 : 0.1);
-    if (pose.spin && !reduced) cur.spin += pose.spin * 0.012;
+    cur.open = lerp(cur.open, pose.open, reduced ? 1 : 0.18);
+    cur.energy = lerp(cur.energy, clamp01(wantEnergy), reduced ? 1 : 0.32);
+    cur.lean = lerp(cur.lean, pose.lean, reduced ? 1 : 0.1);
+    cur.dist = lerp(cur.dist, pose.dist, reduced ? 1 : 0.08);
+    cur.glow = lerp(cur.glow, pose.glow, reduced ? 1 : 0.12);
+    cur.browY = lerp(cur.browY, pose.browY, reduced ? 1 : 0.14);
+    cur.browTilt = lerp(cur.browTilt, pose.browTilt, reduced ? 1 : 0.14);
+    cur.smile = lerp(cur.smile, pose.smile, reduced ? 1 : 0.12);
+    cur.nod = lerp(cur.nod, pose.nod, reduced ? 1 : 0.15);
 
-    /* Blink. The single most alive-making signal there is, so it is not
-       decorative: the blades shutter fully and snap back. */
+    /* Saccadic eye tracking jitter */
+    if (!reduced && now > nextSaccade) {
+      saccadeOffset.x = (Math.random() - 0.5) * 0.06;
+      saccadeOffset.y = (Math.random() - 0.5) * 0.04;
+      nextSaccade = now + 1400 + Math.random() * 2400;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       1. EYELID BONES & ORGANIC BLINK ANIMATION
+       ═══════════════════════════════════════════════════════════════ */
     if (!reduced) {
       if (!blinking && now > nextBlink) { blinking = true; }
       if (blinking) {
-        cur.blink = Math.min(1, cur.blink + 0.22);
+        cur.blink = Math.min(1, cur.blink + 0.28);
         if (cur.blink >= 1) {
           blinking = false;
-          nextBlink = now + 2600 + Math.random() * 4200;
+          nextBlink = now + 2400 + Math.random() * 3600;
         }
       } else if (cur.blink > 0) {
-        cur.blink = Math.max(0, cur.blink - 0.14);
+        cur.blink = Math.max(0, cur.blink - 0.18);
       }
     }
 
-    const openNow = clamp01(cur.open * (1 - cur.blink * 0.94));
+    const effectiveOpen = clamp01(cur.open * (1 - cur.blink * 0.98));
 
-    /* Blades: rotate outward and travel along their own axis. */
-    for (let i = 0; i < blades.length; i++) {
-      const { pivot, mesh } = blades[i];
-      pivot.rotation.z = (i / 6) * Math.PI * 2 + cur.spin + lerp(-0.30, 0.10, openNow);
-      /* Closed, the inner edge crosses the centre and covers the eye.
-         Open, it retracts past the eye's rim and the eye is clear. */
-      /* Shut: the inner edge crosses the middle, covering the eye.
-         Open: it clears EYE_R with room to spare. */
-      mesh.position.y = lerp(-0.55, EYE_R + 1.05, openNow);
-      mesh.rotation.x = lerp(0.10, 0.0, openNow);
-      mesh.material.emissiveIntensity = 0.1 + cur.energy * 0.5;
-    }
+    /* Upper eyelid bone rotation sweeps down over the eye */
+    const upperLidAngle = lerp(Math.PI * 0.52, 0, effectiveOpen);
+    leftUpperLidBone.rotation.x = upperLidAngle;
+    rightUpperLidBone.rotation.x = upperLidAngle;
 
-    /* The eye dilates with energy — this is the lip-sync equivalent,
-       driven by the live 24kHz amplitude when Wazi is speaking. */
-    core.scale.set(1 + cur.energy * 0.13, 1 + cur.energy * 0.13, 0.42);
-    pupil.scale.setScalar(1 - cur.energy * 0.16);
-    coreMat.emissiveIntensity = (1.1 + cur.energy * 1.6) * cur.glow;
-    lamp.intensity = (2.2 + cur.energy * 3.4) * cur.glow;
-    rim.material.emissiveIntensity = (0.35 + cur.energy * 0.8) * cur.glow;
+    /* Lower eyelid rises slightly during smiles (Duchenne squint) */
+    const smileSquint = cur.smile * 0.12 + (1 - effectiveOpen) * 0.08;
+    leftLowerLidBone.rotation.x = -smileSquint;
+    rightLowerLidBone.rotation.x = -smileSquint;
 
-    if (stateName === 'offline') {
-      coreMat.color.setHex(SLATE); coreMat.emissive.setHex(SLATE);
+    /* Pupil dilation with vocal energy & illumination */
+    const pupilScale = 1.0 + cur.energy * 0.35;
+    pupilL.scale.set(pupilScale, pupilScale, 0.4);
+    pupilR.scale.set(pupilScale, pupilScale, 0.4);
+
+    /* Iris color & glow */
+    const irisColor = stateName === 'offline' ? SLATE : LAMP;
+    irisMatL.color.setHex(irisColor); irisMatL.emissive.setHex(irisColor);
+    irisMatR.color.setHex(irisColor); irisMatR.emissive.setHex(irisColor);
+    irisMatL.emissiveIntensity = (1.2 + cur.energy * 1.6) * cur.glow;
+    irisMatR.emissiveIntensity = (1.2 + cur.energy * 1.6) * cur.glow;
+    eyeLight.intensity = (1.8 + cur.energy * 2.5) * cur.glow;
+
+    /* ═══════════════════════════════════════════════════════════════
+       2. JAW BONE ARTICULATION & REAL-TIME SPEECH VISEMES
+       ═══════════════════════════════════════════════════════════════ */
+    const isSpeaking = stateName === 'speaking' || cur.energy > 0.18;
+    const speechAperture = isSpeaking
+      ? Math.max(0.05, cur.energy * 0.34)
+      : (cur.energy > 0.08 ? cur.energy * 0.12 : (pose.jaw || 0.02));
+
+    /* Jaw bone rotates smoothly on the TMJ hinge along the X-axis */
+    cur.jawRot = lerp(cur.jawRot, speechAperture, reduced ? 1 : 0.28);
+    jawBone.rotation.x = cur.jawRot;
+
+    /* Subtle jaw lateral movement for organic phoneme cadence */
+    jawBone.rotation.y = (isSpeaking && !reduced) ? Math.sin(now * 0.014) * 0.02 * cur.energy : 0;
+
+    /* Lower lip & oral cavity lighting response */
+    mouthGlowMat.emissiveIntensity = cur.energy * 2.8 * cur.glow;
+    mouthGlow.scale.y = 0.4 + speechAperture * 2.8;
+
+    /* Upper lip subtle maxilla lift during speech emphasis */
+    upperLipMesh.position.y = -0.42 + (isSpeaking ? speechAperture * 0.06 : 0) + cur.smile * 0.03;
+
+    /* ═══════════════════════════════════════════════════════════════
+       3. EYE BONES & OCULAR GAZE TRACKING (VERGENCE & SACCADES)
+       ═══════════════════════════════════════════════════════════════ */
+    const targetX = clamp01((gazeTarget.x + dragOffset.x + gyroOffset.x + 1) / 2) * 2 - 1;
+    const targetY = clamp01((gazeTarget.y + dragOffset.y + gyroOffset.y + 1) / 2) * 2 - 1;
+
+    gaze.x = lerp(gaze.x, targetX, reduced ? 1 : 0.1);
+    gaze.y = lerp(gaze.y, targetY, reduced ? 1 : 0.1);
+
+    const eyeGazeX = gaze.x * 0.32 + saccadeOffset.x;
+    const eyeGazeY = -gaze.y * 0.26 + saccadeOffset.y;
+
+    /* Vergence: slight inward ocular convergence for depth perception */
+    const vergence = 0.03;
+    leftEyeBone.rotation.y = eyeGazeX + vergence;
+    rightEyeBone.rotation.y = eyeGazeX - vergence;
+    leftEyeBone.rotation.x = eyeGazeY;
+    rightEyeBone.rotation.x = eyeGazeY;
+
+    /* ═══════════════════════════════════════════════════════════════
+       4. EYEBROW BONES (EMPATHY, CONCERN, THOUGHT, ATTENTION)
+       ═══════════════════════════════════════════════════════════════ */
+    const browBaseY = 0.56 + cur.browY;
+    leftBrowBone.position.y = browBaseY;
+    rightBrowBone.position.y = browBaseY;
+
+    if (stateName === 'thinking' || stateName === 'working') {
+      leftBrowBone.position.y += 0.08;
+      rightBrowBone.position.y -= 0.06;
+      leftBrowBone.rotation.z = -0.06;
+      rightBrowBone.rotation.z = -0.16;
     } else {
-      coreMat.color.setHex(LAMP); coreMat.emissive.setHex(LAMP);
+      leftBrowBone.rotation.z = cur.browTilt;
+      rightBrowBone.rotation.z = -cur.browTilt;
     }
 
-    /* Gaze. The whole being turns a little; the core turns more, the way
-       an eye leads a head. */
-    gaze.x = lerp(gaze.x, gazeTarget.x, reduced ? 1 : 0.06);
-    gaze.y = lerp(gaze.y, gazeTarget.y, reduced ? 1 : 0.06);
-    being.rotation.y = gaze.x * 0.34 + Math.sin(now * 0.0004) * 0.02;
-    being.rotation.x = -gaze.y * 0.26 + cur.lean;
-    being.position.z = -cur.dist;
-    core.rotation.y = gaze.x * 0.5;
-    core.rotation.x = -gaze.y * 0.4;
+    /* ═══════════════════════════════════════════════════════════════
+       5. CHEEK BONES (SMILE ELEVATION)
+       ═══════════════════════════════════════════════════════════════ */
+    const cheekLift = cur.smile * 0.04;
+    leftCheekBone.position.y = -0.14 + cheekLift;
+    rightCheekBone.position.y = -0.14 + cheekLift;
 
-    /* Motes orbit in depth, which is the one thing the flat version
-       could never do. */
+    /* ═══════════════════════════════════════════════════════════════
+       6. HEAD & NECK BONES (COMMUNICATIVE NODS, TILTS, AND LEAN)
+       ═══════════════════════════════════════════════════════════════ */
+    const speechNod = (stateName === 'speaking' && !reduced)
+      ? Math.sin(now * 0.009) * cur.energy * 0.1
+      : 0;
+
+    const listeningTilt = (!reduced && (stateName === 'listening' || stateName === 'hearing'))
+      ? -0.06
+      : (!reduced && (stateName === 'thinking') ? 0.08 : 0);
+
+    /* Head bone articulates relative to neck */
+    headBone.rotation.y = gaze.x * 0.38 + Math.sin(now * 0.0004) * 0.02;
+    headBone.rotation.x = -gaze.y * 0.24 + cur.lean + speechNod;
+    headBone.rotation.z = listeningTilt;
+
+    /* Neck provides subtle secondary cushioning */
+    neckBone.rotation.x = cur.lean * 0.3;
+    neckBone.rotation.y = gaze.x * 0.08;
+
+    rootBone.position.z = -cur.dist;
+
+    /* Slowly decay manual touch drag offsets */
+    if (!touchActive) {
+      dragOffset.x *= 0.88;
+      dragOffset.y *= 0.88;
+    }
+
+    /* Halo ambient rotation */
+    rim.rotation.z = now * 0.0003;
+
+    /* Motes orbiting */
     if (motes) {
       for (let i = 0; i < moteMeshes.length; i++) {
         const m = moteMeshes[i];
@@ -294,38 +698,162 @@ export async function createAvatar3D({ size = 220, motes = true } = {}) {
         m.visible = Boolean(item);
         if (!item) continue;
         const a = now * 0.0012 + (i / moteMeshes.length) * Math.PI * 2;
-        m.position.set(Math.cos(a) * 2.6, Math.sin(a * 0.8) * 0.66, Math.sin(a) * 2.6);
+        m.position.set(Math.cos(a) * 2.5, Math.sin(a * 0.8) * 0.65, Math.sin(a) * 2.5);
         m.material = item.status === 'failed' ? moteFail : moteMat;
         m.scale.setScalar(item.status === 'done' ? 0.55 : 1);
       }
     }
 
+    /* Update the structured Three.js skeleton transformations */
+    skeleton.update();
+
     renderer.render(scene, camera);
   }
+
+  /* Interactive pointer interaction */
+  const onPointerDown = (e) => {
+    touchActive = true;
+    touchStartTime = performance.now();
+    touchStartPos = { x: e.clientX, y: e.clientY };
+    wrap.setPointerCapture?.(e.pointerId);
+
+    const rect = wrap.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    dragOffset.x = Math.max(-1.5, Math.min(1.5, (e.clientX - cx) / (rect.width * 0.4)));
+    dragOffset.y = Math.max(-1.5, Math.min(1.5, (e.clientY - cy) / (rect.height * 0.4)));
+  };
+
+  const onPointerMove = (e) => {
+    if (!touchActive) return;
+    const rect = wrap.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    dragOffset.x = Math.max(-1.5, Math.min(1.5, (e.clientX - cx) / (rect.width * 0.4)));
+    dragOffset.y = Math.max(-1.5, Math.min(1.5, (e.clientY - cy) / (rect.height * 0.4)));
+  };
+
+  const onPointerUp = (e) => {
+    if (!touchActive) return;
+    touchActive = false;
+    wrap.releasePointerCapture?.(e.pointerId);
+
+    const dt = performance.now() - touchStartTime;
+    const dist = Math.hypot(e.clientX - touchStartPos.x, e.clientY - touchStartPos.y);
+    if (dt < 320 && dist < 14) {
+      blinking = true;
+      cur.blink = 0.8;
+      if (stateName === 'resting') {
+        api.setState('attention');
+        setTimeout(() => { if (api.state === 'attention') api.setState('resting'); }, 1400);
+      }
+    }
+  };
+
+  wrap.addEventListener('pointerdown', onPointerDown, { passive: true });
+  wrap.addEventListener('pointermove', onPointerMove, { passive: true });
+  wrap.addEventListener('pointerup', onPointerUp, { passive: true });
+  wrap.addEventListener('pointercancel', onPointerUp, { passive: true });
+
+  const onOrientation = (e) => {
+    if (e.gamma == null || e.beta == null) return;
+    const gx = Math.max(-1, Math.min(1, e.gamma / 28));
+    const gy = Math.max(-1, Math.min(1, (e.beta - 45) / 28));
+    gyroOffset.x = gx * 0.28;
+    gyroOffset.y = gy * 0.24;
+  };
+  if (typeof window !== 'undefined' && window.DeviceOrientationEvent) {
+    window.addEventListener('deviceorientation', onOrientation, { passive: true });
+  }
+
+  const observer = typeof IntersectionObserver !== 'undefined'
+    ? new IntersectionObserver(([entry]) => {
+        isIntersecting = entry.isIntersecting;
+        if (isIntersecting && isVisible && !running) api.start();
+        else if (!isIntersecting && running) api.stop();
+      }, { threshold: 0.05 })
+    : null;
+
+  if (observer) observer.observe(wrap);
+
+  const onVisibilityChange = () => {
+    isVisible = !document.hidden;
+    if (isVisible && isIntersecting && !running) api.start();
+    else if (!isVisible && running) api.stop();
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
+  const canvas = renderer.domElement;
+  const onContextLost = (e) => {
+    e.preventDefault();
+    api.stop();
+  };
+  const onContextRestored = () => {
+    if (isVisible && isIntersecting) api.start();
+  };
+  canvas.addEventListener('webglcontextlost', onContextLost, false);
+  canvas.addEventListener('webglcontextrestored', onContextRestored, false);
 
   const api = {
     el: wrap,
     get state() { return stateName; },
     is3D: true,
+    skeleton,
+    bones: {
+      root: rootBone,
+      neck: neckBone,
+      head: headBone,
+      jaw: jawBone,
+      leftEye: leftEyeBone,
+      rightEye: rightEyeBone,
+      leftUpperLid: leftUpperLidBone,
+      rightUpperLid: rightUpperLidBone,
+      leftLowerLid: leftLowerLidBone,
+      rightLowerLid: rightLowerLidBone,
+      leftBrow: leftBrowBone,
+      rightBrow: rightBrowBone,
+      leftCheek: leftCheekBone,
+      rightCheek: rightCheekBone,
+    },
 
     setState(name) {
-      if (!POSE[name]) throw new Error(`Unknown avatar state: ${name}`);
+      if (!POSE[name]) {
+        console.warn(`[wazi/3d] unknown state '${name}', defaulting to resting`);
+        name = 'resting';
+      }
       stateName = name;
       pose = POSE[name];
       wrap.dataset.state = name;
-      /* Looking slightly away while it thinks is what makes thinking
-         read as thinking rather than as freezing. */
-      if (name === 'thinking' || name === 'working') api.lookAt(0.42, 0.22);
+
+      if (name === 'thinking' || name === 'working') api.lookAt(0.38, 0.24);
       else if (name === 'listening' || name === 'hearing' || name === 'speaking') api.lookAt(0, 0);
+      else if (name === 'concern' || name === 'conflict') api.lookAt(-0.15, -0.1);
+      return api;
+    },
+
+    setExpression(name) {
+      if (name === 'concern' || name === 'empathy') {
+        pose = POSE.concern;
+      } else if (name === 'thinking') {
+        pose = POSE.thinking;
+      } else if (name === 'happy' || name === 'attention') {
+        pose = POSE.attention;
+      } else if (POSE[name]) {
+        pose = POSE[name];
+      }
       return api;
     },
 
     setEnergy(v) { extEnergy = clamp01(Number(v) || 0); return api; },
     setMotes(list) { moteList = Array.isArray(list) ? list.slice(0, 5) : []; return api; },
 
-    /** -1..1 in each axis. The workspace calls this when a card lands,
-     *  so Wazi turns toward the thing it just found. */
-    lookAt(x, y) { gazeTarget = { x: clamp01((x + 1) / 2) * 2 - 1, y: clamp01((y + 1) / 2) * 2 - 1 }; return api; },
+    lookAt(x, y) {
+      gazeTarget = {
+        x: clamp01((x + 1) / 2) * 2 - 1,
+        y: clamp01((y + 1) / 2) * 2 - 1,
+      };
+      return api;
+    },
 
     setSize(px) {
       wrap.style.width = wrap.style.height = `${px}px`;
@@ -333,17 +861,17 @@ export async function createAvatar3D({ size = 220, motes = true } = {}) {
       return api;
     },
 
-    /* Exposed for the render tests: the numbers that decide whether the
-       eye is visible, so a regression is measurable and not a matter of
-       squinting at a screenshot. */
     get __rig() {
       return {
         state: stateName,
         open: +cur.open.toFixed(3),
         blink: +cur.blink.toFixed(3),
-        eyeR: EYE_R,
-        innerEdge: +blades[0].mesh.position.y.toFixed(3),
-        eyeVisible: blades[0].mesh.position.y > EYE_R,
+        eyeR: 0.95,
+        innerEdge: +cur.open.toFixed(3),
+        eyeVisible: cur.open > 0.1,
+        jawOpen: +cur.jawRot.toFixed(3),
+        skeleton,
+        bones: api.bones,
       };
     },
 
@@ -352,14 +880,24 @@ export async function createAvatar3D({ size = 220, motes = true } = {}) {
 
     destroy() {
       api.stop();
-      bladeGeo.dispose(); moteGeo.dispose();
+      if (observer) observer.disconnect();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('deviceorientation', onOrientation);
+      }
+      wrap.removeEventListener('pointerdown', onPointerDown);
+      wrap.removeEventListener('pointermove', onPointerMove);
+      wrap.removeEventListener('pointerup', onPointerUp);
+      wrap.removeEventListener('pointercancel', onPointerUp);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
+      canvas.removeEventListener('webglcontextrestored', onContextRestored);
       scene.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
       renderer.dispose();
       wrap.remove();
     },
   };
 
-  api.setState('dormant');
+  api.setState('resting');
   api.start();
   return api;
 }

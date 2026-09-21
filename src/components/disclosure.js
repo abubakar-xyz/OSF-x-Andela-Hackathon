@@ -106,15 +106,19 @@ export function DisclosureReview({ draft, payload, user = {}, onApprove, onBack,
   const audit = () => auditDraftAgainstDisclosure({ ...draft, disclosure }, details);
 
   const actions = el('div', { class: 'btn-row', style: { marginTop: '20px' } });
-  for (const [kind, label] of [['copy', 'Copy'], ['print', 'PDF'], ['email', 'Email'], ['whatsapp', 'WhatsApp']]) {
+  const errorNotice = el('p', { class: 'tt__checked', style: { display: 'none', color: '#e11d48', marginTop: '10px' } });
+
+  for (const [kind, label] of [['copy', '📋 Copy'], ['print', '📄 PDF / Print'], ['email', '✉️ Email'], ['whatsapp', '💬 WhatsApp']]) {
     actions.append(el('button', {
       class: `btn${kind === 'print' ? ' btn--primary' : ''}`, type: 'button', text: label,
       onclick: () => {
         const a = audit();
         if (!a.ok) {
-          alert(`Not exporting: ${a.problems.join('; ')}`);
+          errorNotice.textContent = `Cannot export: ${a.problems.join('; ')}`;
+          errorNotice.style.display = 'block';
           return;
         }
+        errorNotice.style.display = 'none';
         /* Approval is the one act that unlocks export. §16 invariant */
         onApprove?.({ ...disclosure });
         const prepared = prepare_external_action({ ...draft, disclosure }, disclosure, { approved: true, live: false });
@@ -137,6 +141,7 @@ export function DisclosureReview({ draft, payload, user = {}, onApprove, onBack,
     el('p', { class: 'disc__honesty',
       text: 'Wazi can’t promise you’ll get a reply, and can’t keep you anonymous once you send this.' }),
     Ribbon('simulated'),
+    errorNotice,
     actions,
     el('button', { class: 'btn btn--ghost', type: 'button', style: { marginTop: '12px', width: '100%' },
       text: '← Back to the draft', onclick: () => onBack?.() }),

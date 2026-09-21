@@ -6,11 +6,12 @@ let open = null;
 
 export function closeSheet() {
   if (!open) return;
-  if (open.onKey) document.removeEventListener('keydown', open.onKey);
-  open.scrim.remove();
-  open.sheet.remove();
-  open.restore?.focus?.();
+  const current = open;
   open = null;
+  if (current.onKey) document.removeEventListener('keydown', current.onKey);
+  try { current.scrim?.remove(); } catch {}
+  try { current.sheet?.remove(); } catch {}
+  try { current.restore?.focus?.(); } catch {}
 }
 
 /**
@@ -21,7 +22,12 @@ export function closeSheet() {
  */
 export function openSheet(title, buildBody, { onClose } = {}) {
   const restore = document.activeElement;
-  if (open) { open.scrim.remove(); open.sheet.remove(); }   /* replace, never stack */
+  if (open) {
+    try { open.scrim?.remove(); } catch {}
+    try { open.sheet?.remove(); } catch {}
+    if (open.onKey) document.removeEventListener('keydown', open.onKey);
+    open = null;
+  }   /* replace, never stack */
 
   const dismiss = () => { closeSheet(); onClose?.(); };
   const scrim = el('div', { class: 'sheet-scrim', onclick: dismiss });

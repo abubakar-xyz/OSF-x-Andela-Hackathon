@@ -13,20 +13,35 @@
  */
 
 import { bus } from '../core/bus.js';
+import { getPersona, getActivePersonaId } from './personas.js';
 
 const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
 
-export const voiceSupported = () => Boolean(SR) && typeof speechSynthesis !== 'undefined';
+export const voiceSupported = () => typeof window !== 'undefined' && ('speechSynthesis' in window || Boolean(SR));
+export const speechRecognitionSupported = () => Boolean(SR);
 
-export function createVoice({ lang = 'en-KE', onPartial, onFinal, onEnergy, onState } = {}) {
+/* Pre-warm voices on script load to avoid asynchronous voice lookup delays */
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  try {
+    window.speechSynthesis.getVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        try { window.speechSynthesis.getVoices(); } catch {}
+      };
+    }
+  } catch {}
+}
+
+export function createVoice({ lang = 'en-KE', persona: initialPersonaId, onPartial, onFinal, onEnergy, onState } = {}) {
   let recog = null;
   let speaking = false;
   let wantListening = false;
   let currentUtterance = null;
-  let analyser = null, micStream = null, rafId = 0;
+  let analyser = null, micStream = null, rafId = 0, speechRafId = 0;
   let language = lang;
+  let activePersonaId = initialPersonaId || getActivePersonaId();
 
-  /* ── Mic amplitude drives the character's `hearing` energy. §8.3 ── */
+  /* ── Mic amplitude drives character energy during listening ────── */
   async function attachMeter() {
     if (analyser || !navigator.mediaDevices?.getUserMedia) return;
     try {
@@ -44,16 +59,40 @@ export function createVoice({ lang = 'en-KE', onPartial, onFinal, onEnergy, onSt
         let sum = 0;
         for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
         const rms = Math.sqrt(sum / buf.length);
-        onEnergy?.(Math.min(1, rms * 4));
+        if (!speaking) onEnergy?.(Math.min(1, rms * 4));
       };
       loop();
-    } catch { /* meter is a nicety; the transcript is the product */ }
+    } catch { /* meter is optional */ }
   }
 
   function detachMeter() {
     cancelAnimationFrame(rafId);
     micStream?.getTracks().forEach((t) => t.stop());
     micStream = null; analyser = null;
+  }
+
+  /* ── Reactive speech energy loop: animates mouth & face during speech ── */
+  function startSpeechEnergy() {
+    cancelAnimationFrame(speechRafId);
+    const startT = performance.now();
+    const step = () => {
+      if (!speaking) {
+        onEnergy?.(0);
+        return;
+      }
+      const t = (performance.now() - startT) * 0.001;
+      /* Natural conversational phonetic modulation: ~4Hz syllable rate with micro-pauses */
+      const syll = Math.sin(t * 19.0) * 0.35 + Math.sin(t * 7.5) * 0.28 + Math.cos(t * 12.0) * 0.18;
+      const energy = Math.max(0.12, Math.min(1.0, 0.52 + syll));
+      onEnergy?.(energy);
+      speechRafId = requestAnimationFrame(step);
+    };
+    speechRafId = requestAnimationFrame(step);
+  }
+
+  function stopSpeechEnergy() {
+    cancelAnimationFrame(speechRafId);
+    onEnergy?.(0);
   }
 
   function build() {
@@ -70,8 +109,7 @@ export function createVoice({ lang = 'en-KE', onPartial, onFinal, onEnergy, onSt
         const txt = e.results[i][0].transcript;
         if (e.results[i].isFinal) final += txt; else interim += txt;
       }
-      /* Barge-in always wins. Wazi stops mid-word; it never finishes the
-         sentence first. §9.2 rule 5 */
+      /* Barge-in always wins: Wazi stops speaking immediately on speech */
       if ((interim.trim() || final.trim()) && speaking) stopSpeaking('barge-in');
       if (interim.trim()) onPartial?.(interim.trim());
       if (final.trim()) onFinal?.(final.trim());
@@ -87,9 +125,7 @@ export function createVoice({ lang = 'en-KE', onPartial, onFinal, onEnergy, onSt
       }
     };
 
-    /* Chrome ends recognition on silence. Restart quietly so that "it is
-       just here" stays true without the user pressing anything. §5.2 */
-    r.onend = () => { if (wantListening) { try { r.start(); } catch { /* already starting */ } } };
+    r.onend = () => { if (wantListening) { try { r.start(); } catch {} } };
     return r;
   }
 
@@ -101,7 +137,7 @@ export function createVoice({ lang = 'en-KE', onPartial, onFinal, onEnergy, onSt
       if (!SR) { onState?.('unsupported'); return false; }
       wantListening = true;
       recog = recog || build();
-      try { recog.start(); } catch { /* already running */ }
+      try { recog.start(); } catch {}
       onState?.('listening');
       attachMeter();
       return true;
@@ -109,7 +145,7 @@ export function createVoice({ lang = 'en-KE', onPartial, onFinal, onEnergy, onSt
 
     stop() {
       wantListening = false;
-      try { recog?.stop(); } catch { /* not running */ }
+      try { recog?.stop(); } catch {}
       detachMeter();
       onState?.('idle');
     },
@@ -120,40 +156,103 @@ export function createVoice({ lang = 'en-KE', onPartial, onFinal, onEnergy, onSt
     },
 
     /**
-     * One spoken sentence by default, three short ones maximum (§9.2).
-     * Long figures, source lists and reference numbers are never read
-     * aloud — they are rendered. The caller is responsible for that; this
-     * layer enforces the sentence cap.
+     * Spoken utterance with instant latency and reactive mouth visemes.
+     * Supports adaptive length for both quick check-ins and in-depth explanations.
      */
-    say(text, { onDone } = {}) {
-      if (typeof speechSynthesis === 'undefined') { onDone?.(); return; }
-      const trimmed = capSentences(text, 3);
+    say(text, opts = {}) {
+      const { onDone, maxSentences } = opts;
+      const trimmed = maxSentences ? capSentences(text, maxSentences) : String(text || '').trim();
+      if (!trimmed) { onDone?.(); return; }
+
       stopSpeaking('replaced');
 
+      speaking = true;
+      onState?.('speaking');
+      bus.emit('voice:speaking', trimmed);
+      startSpeechEnergy();
+
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        speaking = false;
+        currentUtterance = null;
+        stopSpeechEnergy();
+        onState?.(wantListening ? 'listening' : 'idle');
+        onDone?.();
+      };
+
+      if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        const words = trimmed.trim().split(/\s+/).length;
+        const estMs = Math.max(1600, words * 360);
+        setTimeout(finish, estMs);
+        return;
+      }
+
+      const synth = window.speechSynthesis;
+      try { synth.resume(); } catch {}
+
+      const p = getPersona(opts.persona || activePersonaId);
       const u = new SpeechSynthesisUtterance(trimmed);
       u.lang = language;
-      u.rate = 1.02; u.pitch = 1.0;
-      const voice = pickVoice(language);
+      u.rate = opts.rate ?? (p?.rate ?? 0.96);
+      u.pitch = opts.pitch ?? (p?.pitch ?? 1.0);
+
+      const voice = pickVoice(language, p?.gender);
       if (voice) u.voice = voice;
 
-      u.onstart = () => { speaking = true; onState?.('speaking'); bus.emit('voice:speaking', trimmed); };
-      u.onend = () => { speaking = false; currentUtterance = null; onState?.(wantListening ? 'listening' : 'idle'); onDone?.(); };
-      u.onerror = () => { speaking = false; currentUtterance = null; onDone?.(); };
+      u.onboundary = () => {
+        /* Syllable and word boundary spikes for dynamic lip visemes */
+        onEnergy?.(0.92);
+      };
+
+      /* Safety fallback: ensure mouth does not get stuck open if synthesis hangs */
+      const words = trimmed.trim().split(/\s+/).length;
+      const safetyMs = Math.max(2200, words * 420 + 900);
+      const safetyTimer = setTimeout(() => {
+        if (!finished && !synth.speaking) finish();
+      }, safetyMs);
+
+      const guardedFinish = () => {
+        clearTimeout(safetyTimer);
+        finish();
+      };
+
+      u.onend = guardedFinish;
+      u.onerror = (err) => {
+        console.warn('[wazi/speech] utterance ended with:', err?.error);
+        guardedFinish();
+      };
 
       currentUtterance = u;
-      speechSynthesis.speak(u);
+      try {
+        synth.speak(u);
+      } catch (err) {
+        console.warn('[wazi/speech] speak failed:', err);
+        guardedFinish();
+      }
       return u;
     },
 
+    get persona() { return getPersona(activePersonaId); },
+    setPersona(id) {
+      if (id) activePersonaId = id;
+    },
+
     interrupt() { stopSpeaking('manual'); },
-    destroy() { api.stop(); stopSpeaking('destroy'); recog = null; },
+    destroy() {
+      api.stop();
+      stopSpeaking('destroy');
+      recog = null;
+    },
   };
 
   function stopSpeaking(reason) {
-    if (typeof speechSynthesis === 'undefined') return;
-    if (!speaking && !currentUtterance) return;
-    try { speechSynthesis.cancel(); } catch { /* nothing queued */ }
-    speaking = false; currentUtterance = null;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try { window.speechSynthesis.cancel(); } catch {}
+    speaking = false;
+    currentUtterance = null;
+    stopSpeechEnergy();
     onState?.(wantListening ? 'listening' : 'idle');
     bus.emit('voice:interrupted', reason);
   }
@@ -161,19 +260,43 @@ export function createVoice({ lang = 'en-KE', onPartial, onFinal, onEnergy, onSt
   return api;
 }
 
-/** §9.2 rule 1 — one sentence by default, three maximum, ever. */
+/** Adaptive sentence capping utility when a caller requests a specific ceiling. */
 export function capSentences(text, max = 3) {
   const parts = String(text).match(/[^.!?]+[.!?]*/g) ?? [String(text)];
   return parts.slice(0, max).join(' ').trim();
 }
 
-function pickVoice(bcp47) {
+function pickVoice(bcp47, gender) {
   try {
-    const all = speechSynthesis.getVoices();
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
+    const all = window.speechSynthesis.getVoices();
+    if (!all || all.length === 0) return null;
     const base = bcp47.split('-')[0];
-    /* Never imitate an accent — prefer the plain regional voice. §9.2 */
-    return all.find((v) => v.lang === bcp47)
-        ?? all.find((v) => v.lang?.startsWith(base))
-        ?? null;
+
+    const isNonRobotic = (v) => !/espeak|whisper|metallic|robotic|compact|flite/i.test(v.name);
+    const isNeural = (v) => /natural|neural|online|premium|enhanced/i.test(v.name);
+    const isMale = (v) => /(guy|ryan|daniel|oliver|arthur|david|george|james|male|mzee|bernard|ken)/i.test(v.name) &&
+                          !/(female|samantha|karen|serena|moira|fiona|tessa|zira|jenny|aria|ava)/i.test(v.name);
+    const isFemale = (v) => /(female|samantha|karen|serena|moira|fiona|tessa|zira|jenny|aria|ava|victoria|hazel|susan)/i.test(v.name);
+
+    const langMatches = all.filter((v) => (v.lang === bcp47 || v.lang?.startsWith(base)) && isNonRobotic(v));
+    const pool = langMatches.length > 0 ? langMatches : all.filter(isNonRobotic);
+
+    if (gender === 'male') {
+      const maleNeural = pool.find((v) => isNeural(v) && isMale(v));
+      if (maleNeural) return maleNeural;
+      const maleAny = pool.find((v) => isMale(v));
+      if (maleAny) return maleAny;
+    } else if (gender === 'female') {
+      const femaleNeural = pool.find((v) => isNeural(v) && isFemale(v));
+      if (femaleNeural) return femaleNeural;
+      const femaleAny = pool.find((v) => isFemale(v));
+      if (femaleAny) return femaleAny;
+    }
+
+    const neuralGeneral = pool.find((v) => isNeural(v));
+    if (neuralGeneral) return neuralGeneral;
+
+    return pool.find((v) => v.default) ?? pool[0] ?? all[0] ?? null;
   } catch { return null; }
 }

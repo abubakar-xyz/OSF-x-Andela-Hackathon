@@ -59,10 +59,12 @@ export const isConfigured = () => {
 
 /** Shown wherever someone might assume a hosted model is running. */
 export const HONEST_LABEL = 'On-device speech — no hosted model is connected';
-export const LIVE_LABEL = (model) => `Live: ${model}`;
+export const LIVE_LABEL = (model, voice) => `Live Voice: ${voice ? voice + ' ' : ''}Active (${model || 'gemini-3.8-live'})`;
 
 export function createLiveVoice({
-  onHeard, onSaid, onEnergy, onState, onSurface, onError, onReady, onUnavailable,
+  voice: initialVoice = '',
+  persona: initialPersona = '',
+  onHeard, onSaid, onEnergy, onState, onSurface, onError, onReady, onUnavailable, onExpiring,
 } = {}) {
   let ws = null, actx = null, micStream = null, worklet = null, src = null;
   let playhead = 0;
@@ -72,6 +74,13 @@ export function createLiveVoice({
   let loudFrames = 0;
   let open = false;
   let model = '';
+  let voice = initialVoice || '';
+  let activeVoice = initialVoice || '';
+  let activePersona = initialPersona || '';
+  let stopped = false;
+  let hasConnected = false;
+  let lastResumptionHandle = null;
+  let reconnectTimer = null;
 
   const send = (obj) => { if (ws?.readyState === 1) ws.send(JSON.stringify(obj)); };
 
@@ -197,53 +206,126 @@ export function createLiveVoice({
     send({ type: 'audio', pcm: btoa(bin) });
   }
 
+  function connectSocket(resumeHandle) {
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    if (ws) {
+      try { ws.onclose = null; ws.onerror = null; ws.close(); } catch {}
+      ws = null;
+    }
+
+    let url = relayURL();
+    const params = new URLSearchParams();
+    if (resumeHandle) params.set('resume', resumeHandle);
+    if (activeVoice) params.set('voice', activeVoice);
+    if (activePersona) params.set('persona', activePersona);
+    const qs = params.toString();
+    if (qs) {
+      const sep = url.includes('?') ? '&' : '?';
+      url = `${url}${sep}${qs}`;
+    }
+
+    ws = new WebSocket(url);
+
+    ws.onopen = () => { /* awaiting proof via ready message */ };
+    ws.onclose = () => {
+      open = false;
+      if (!stopped && (hasConnected || lastResumptionHandle)) {
+        console.info('[wazi/live] connection closed; scheduling seamless reconnect');
+        reconnectTimer = setTimeout(() => {
+          if (!stopped) connectSocket(lastResumptionHandle);
+        }, 1500);
+      } else {
+        onState?.('idle');
+      }
+    };
+    ws.onerror = () => {
+      if (!hasConnected && !stopped) {
+        onError?.('the relay connection failed');
+      }
+    };
+
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      switch (m.type) {
+        case 'ready':
+          open = true;
+          hasConnected = true;
+          model = m.model;
+          voice = m.voice || '';
+          onReady?.(m);
+          onState?.('listening');
+          break;
+        case 'audio':      playPCM(m.pcm); break;
+        case 'heard':      onHeard?.(m.text); break;
+        case 'said':       onSaid?.(m.text); break;
+        case 'interrupted': flushPlayback(); break;
+        case 'surface':    onSurface?.(m.surface); break;
+        case 'status':
+          if (m.status === 'IDLE') onState?.('listening');
+          else if (m.status === 'IN_PROGRESS') onState?.('working');
+          break;
+        case 'turn_complete': break;
+        case 'expiring':
+          /* Lifecycle notification: Gemini Live session approaching 10-min limit.
+             Do NOT report as an error. Record resumption handle and renew seamlessly. */
+          console.info('[wazi/live] session is about to roll over; preparing seamless renewal', m);
+          if (m.resumptionHandle) lastResumptionHandle = m.resumptionHandle;
+          onExpiring?.(m);
+          if (!speaking && queued.length === 0) {
+            setTimeout(() => {
+              if (!speaking && queued.length === 0 && !stopped) {
+                connectSocket(lastResumptionHandle);
+              }
+            }, 1000);
+          }
+          break;
+        case 'unavailable':
+          open = false;
+          onUnavailable?.(m.reason);
+          break;
+        case 'error':      onError?.(m.message); break;
+        default: break;
+      }
+    };
+  }
+
   const api = {
     get connected() { return open; },
     get model() { return model; },
+    get voice() { return voice; },
+    get persona() { return activePersona; },
+
+    setPersona(personaId, voiceName) {
+      activePersona = personaId;
+      if (voiceName) activeVoice = voiceName;
+      send({ type: 'persona', persona: personaId });
+      /* If voice changed, re-establish socket with resumption handle to seamlessly adopt new voice */
+      if (open && voiceName && voiceName !== voice) {
+        flushPlayback();
+        connectSocket(lastResumptionHandle);
+      }
+    },
 
     async start() {
       if (!isConfigured()) throw new Error('no relay configured');
+      stopped = false;
       await startMic();
-      ws = new WebSocket(relayURL());
-
-      /* The socket being open says nothing about the model being
-         reachable. `open` is set when the relay sends `ready`. */
-      ws.onopen = () => { /* awaiting proof */ };
-      ws.onclose = () => { open = false; onState?.('idle'); };
-      ws.onerror = () => onError?.('the relay connection failed');
-
-      ws.onmessage = (ev) => {
-        let m; try { m = JSON.parse(ev.data); } catch { return; }
-        switch (m.type) {
-          case 'ready':
-            open = true; model = m.model; onReady?.(m); onState?.('listening'); break;
-          case 'audio':      playPCM(m.pcm); break;
-          case 'heard':      onHeard?.(m.text); break;
-          case 'said':       onSaid?.(m.text); break;
-          case 'interrupted': flushPlayback(); break;
-          case 'surface':    onSurface?.(m.surface); break;
-          case 'status':
-            /* IDLE is the real "the server is done" signal. */
-            if (m.status === 'IDLE') onState?.('listening');
-            else if (m.status === 'IN_PROGRESS') onState?.('working');
-            break;
-          case 'turn_complete': break;   /* deliberately not idle */
-          case 'expiring':   onError?.('this session is about to roll over'); break;
-          case 'unavailable':
-            /* Never leave the interface implying a hosted model is
-               running when it is not. §6 Law 8 */
-            open = false;
-            onUnavailable?.(m.reason);
-            break;
-          case 'error':      onError?.(m.message); break;
-          default: break;
-        }
-      };
+      connectSocket();
       return true;
     },
 
     /** Wazi opens the conversation. §5 Decision 3. */
     openWith(text) { send({ type: 'say_first', text }); },
+    moment(name, prompt) { send({ type: 'moment', moment: name, prompt }); },
+    setPersona(personaId, voiceName) {
+      activePersona = personaId;
+      if (voiceName) activeVoice = voiceName;
+      send({ type: 'persona', persona: personaId, voice: voiceName });
+      if (ws && open) {
+        connectSocket();
+      }
+    },
+    setLanguage(code, name) { send({ type: 'language', code, name }); },
 
     text(t) { send({ type: 'text', text: t }); },
     image(jpegB64) { send({ type: 'image', jpeg: jpegB64 }); },
@@ -251,6 +333,8 @@ export function createLiveVoice({
     interrupt() { flushPlayback(); },
 
     stop() {
+      stopped = true;
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
       flushPlayback();
       try { ws?.close(); } catch { /* already closed */ }
       try { worklet?.disconnect?.(); src?.disconnect?.(); } catch { /* not connected */ }

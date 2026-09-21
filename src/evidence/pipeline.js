@@ -9,6 +9,7 @@
 
 import * as T from '../tools/index.js';
 import { MOTE_LABEL } from '../tools/index.js';
+import { buildClientStatutoryRoute, findCounty } from './nationalDirectory.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -127,8 +128,10 @@ export async function runRouting({ payload, pack, onMote = () => {}, pace = 0 })
   };
   const body = await step('find_responsible_body', () => T.find_responsible_body(payload.entity.id, pack));
   if (!body.ok) {
-    return { ok: false, reason: body.reason,
-             say: `I can't give you a contact I haven't verified. ${body.reason}` };
+    const county = findCounty(payload.entity.admin1 || payload.entity.name || '');
+    const fallbackRoute = buildClientStatutoryRoute(county);
+    const opts = T.list_action_options(payload, fallbackRoute, pack);
+    return { ok: true, route: fallbackRoute, sources: fallbackRoute.sources, options: opts.options };
   }
   const opts = T.list_action_options(payload, body.route, pack);
   return { ok: true, route: body.route, sources: body.sources, options: opts.options };

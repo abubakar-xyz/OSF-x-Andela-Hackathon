@@ -10,20 +10,14 @@
  */
 
 export const MODELS = {
-  /* Default for low-latency conversation. Async function calling is the
-     default mode (behavior: NON_BLOCKING). No thinking_level. */
+  /* Default for low-latency voice conversation via Live API */
   host: process.env.WAZI_HOST_MODEL || 'gemini-3.8-live',
 
-  /* Used for the verification turn. It speaks natural conversational
-     fillers WHILE async tools run in the background, which is exactly
-     the moment §8.4 designs motes for — the difference is that here
-     Wazi actually says "checking the records" rather than only showing
-     it. Requires NON_BLOCKING on every declaration. */
-  deep: process.env.WAZI_DEEP_MODEL || 'gemini-3.8-live-extended-thinking',
+  /* Deep model for extended reasoning turns */
+  deep: process.env.WAZI_DEEP_MODEL || 'gemini-3.8-live',
 
-  /* The evidence worker. Structured output, temperature 0. Not a Live
-     model — it must never be the thing holding a conversation. §23.1 */
-  worker: process.env.WAZI_WORKER_MODEL || 'gemini-3-flash',
+  /* The evidence and search worker using Google Search Grounding */
+  worker: process.env.WAZI_WORKER_MODEL || 'gemini-3.5-flash',
 };
 
 /* Straight from the skill's Audio Formats section. */

@@ -55,10 +55,11 @@ function play(notes) {
 }
 
 export const SOUND = {
-  wake:      () => play([[NOTE.D4, 0, 0.30], [NOTE.A4, 0.11, 0.30], [NOTE.D5, 0.22, 0.42]]),
-  listening: () => play([[NOTE.A4, 0, 0.09, 0.06]]),
-  evidence:  () => play([[NOTE.D5, 0, 0.16], [NOTE.A4, 0.10, 0.26]]),
-  exported:  () => play([[NOTE.A4, 0, 0.12], [NOTE.D5, 0.08, 0.20]]),
+  wake:        () => play([[NOTE.D4, 0, 0.30], [NOTE.A4, 0.11, 0.30], [NOTE.D5, 0.22, 0.42]]),
+  sleep:       () => play([[NOTE.D5, 0, 0.20], [NOTE.A4, 0.09, 0.24], [NOTE.D4, 0.18, 0.32]]),
+  listening:   () => play([[NOTE.A4, 0, 0.09, 0.06]]),
+  evidence:    () => play([[NOTE.D5, 0, 0.16], [NOTE.A4, 0.10, 0.26]]),
+  exported:    () => play([[NOTE.A4, 0, 0.12], [NOTE.D5, 0.08, 0.20]]),
   conflicting: () => { /* deliberately silent — §8.6 */ },
   error:       () => { /* errors are quiet — §8.6 */ },
 };
@@ -66,7 +67,7 @@ export const SOUND = {
 /** Haptics, where the device offers them. Never a substitute for a
  *  visible state change. */
 export const HAPTIC = {
-  wake: [12], listening: [8], evidence: [10, 40, 10],
+  wake: [12], sleep: [14, 20, 8], listening: [8], evidence: [10, 40, 10],
   conflicting: [18], exported: [12, 30, 12],
 };
 

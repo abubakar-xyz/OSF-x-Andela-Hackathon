@@ -13,8 +13,9 @@
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
-const ROOT='/home/user/OSF-x-Andela-Hackathon';
+import { extname, join, normalize, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const M={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};
 const server=createServer(async(q,r)=>{let b;try{let u=decodeURIComponent(q.url.split('?')[0]);if(u==='/')u='/index.html';
 const f=join(ROOT,normalize(u).replace(/^(\.\.[/\\])+/,''));b=await readFile(f);

@@ -10,7 +10,10 @@ export function el(tag, props = {}, ...children) {
     else if (k === 'html') node.innerHTML = v;
     else if (k === 'text') node.textContent = v;
     else if (k === 'dataset') Object.assign(node.dataset, v);
-    else if (k === 'style') Object.assign(node.style, v);
+    else if (k === 'style') {
+      if (typeof v === 'string') node.style.cssText = v;
+      else if (v && typeof v === 'object') Object.assign(node.style, v);
+    }
     else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2).toLowerCase(), v);
     else node.setAttribute(k, v === true ? '' : String(v));
   }
@@ -27,7 +30,22 @@ export function append(parent, children) {
   return parent;
 }
 
-export const clear = (node) => { while (node.firstChild) node.removeChild(node.firstChild); return node; };
+export const clear = (node) => {
+  if (!node) return node;
+  if (typeof node.replaceChildren === 'function') {
+    node.replaceChildren();
+  } else {
+    while (node.firstChild) {
+      try {
+        node.removeChild(node.firstChild);
+      } catch {
+        node.textContent = '';
+        break;
+      }
+    }
+  }
+  return node;
+};
 export const $ = (sel, root = document) => root.querySelector(sel);
 
 /** Relative, plain-language time. Freshness is stated in words; the

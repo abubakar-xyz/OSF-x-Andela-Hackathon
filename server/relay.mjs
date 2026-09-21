@@ -23,6 +23,8 @@ import { GoogleGenAI } from '@google/genai';
 import { MODELS, AUDIO, LIMITS, THINKING_LEVEL } from './models.config.mjs';
 import { DECLARATIONS, createToolRunner } from './tools.bridge.mjs';
 import { validatePack, PACK_FILES } from '../src/evidence/pack.js';
+import { searchCivicRecords } from './civicSearch.mjs';
+import { PERSONAS } from '../src/voice/personas.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
@@ -30,7 +32,7 @@ const rootDir = join(__dirname, '..');
 const PORT = 3000;
 const getApiKey = () => process.env.WAZI_API_KEY || process.env.GEMINI_API_KEY;
 const PACK_ID = process.env.WAZI_PACK || 'ke-siaya';
-const VOICE = process.env.WAZI_VOICE || 'Kore';
+const VOICE = process.env.WAZI_VOICE || 'Aoede';
 
 if (!getApiKey()) {
   console.warn(
@@ -56,18 +58,32 @@ const SYSTEM = readFileSync(join(rootDir, 'prompts/identity.md'), 'utf8') + '\n\
                readFileSync(join(rootDir, 'prompts/conversation_policy.md'), 'utf8') + '\n\n' +
                readFileSync(join(rootDir, 'prompts/evidence_policy.md'), 'utf8') + '\n\n' +
                readFileSync(join(rootDir, 'prompts/safety_policy.md'), 'utf8') + '\n\n' +
-               'You have tools. Use check_public_record for any question about whether ' +
-               'something was built, funded, finished or delivered — never answer such a ' +
-               'question from your own knowledge. While a tool runs you may speak a short ' +
-               'natural filler such as "let me check the records". When a tool returns, say ' +
-               'the `say` field it gives you, in your own rhythm, and nothing beyond it. ' +
-               'Never read figures, dates, source names or reference numbers aloud — they are ' +
-               'on screen.';
+               '## Civic Initiative and Tools\n' +
+               'You have proactive tools to help random citizens across Kenya:\n' +
+               '1. Use `check_public_record` for any question about whether something was built, funded, finished, or delivered.\n' +
+               '2. Use `search_public_offices` to look up verified contact details, addresses, and statutory jurisdiction for any of Kenya’s 47 counties or national oversight bodies.\n' +
+               '3. Use `find_who_is_responsible` to pinpoint the public authority in charge of a project.\n' +
+               '4. Use `draft_civic_letter` proactively whenever the citizen wants to take action, write to an office, ask for documents or budget details under the Access to Information Act (ATIA 2016), or prepare a WhatsApp message for local community groups. Do not wait passively—if there is an unresolved discrepancy or an unanswered question, take initiative and offer or generate the draft.\n' +
+               '5. While a tool runs, you may speak a short natural filler (e.g. "Let me check the record", or in Kiswahili: "Wacha niangalie rekodi").\n' +
+               '6. When a tool returns, convey the finding naturally in the active language (English or Kiswahili) with warmth, precision, and honesty.\n' +
+               '7. Never read long numbers, full URLs, or legal citations aloud—they appear on the citizen’s screen.\n' +
+               '8. Adaptive response length: For brief banter and quick check-ins, keep answers to 1–2 punchy sentences. When the citizen asks a complex civic question, discusses policy, public finance, procurement, or devolution, or asks for an in-depth breakdown, provide a thorough, complete, and well-structured explanation without arbitrary sentence limits.';
 
 const app = express();
+app.use(express.json());
 
 app.get('/health', (req, res) => {
   res.json({ ok: true, models: MODELS, pack: PACK_ID, fixture: pack.meta.is_fixture });
+});
+
+app.post('/api/civic-search', async (req, res) => {
+  try {
+    const { what = '', where = '' } = req.body || {};
+    const result = await searchCivicRecords({ what, where });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
 });
 
 // Serve static files from repository root
@@ -82,7 +98,16 @@ const http = createServer(app);
 
 const wss = new WebSocketServer({ server: http });
 
-wss.on('connection', async (client) => {
+wss.on('connection', async (client, req) => {
+  const reqUrl = new URL(req?.url || '/', 'http://localhost');
+  const resumeParam = reqUrl.searchParams.get('resume');
+  const voiceParam = reqUrl.searchParams.get('voice');
+  const personaParam = reqUrl.searchParams.get('persona') || 'amina';
+
+  const VALID_VOICES = ['Aoede', 'Puck', 'Kore', 'Charon', 'Fenrir'];
+  const persona = PERSONAS[personaParam] || PERSONAS.amina;
+  const chosenVoice = VALID_VOICES.includes(voiceParam) ? voiceParam : (persona.voice || VOICE);
+
   const send = (type, data) => {
     if (client.readyState === 1) client.send(JSON.stringify({ type, ...data }));
   };
@@ -115,8 +140,12 @@ wss.on('connection', async (client) => {
     onSurface: (surface) => send('surface', { surface }),
   });
 
-  const useDeep = process.env.WAZI_USE_DEEP !== '0';
-  const model = useDeep ? MODELS.deep : MODELS.host;
+  const model = process.env.WAZI_LIVE_MODEL || MODELS.host;
+  const isThinking = model.includes('thinking');
+
+  const personaDirective = persona.promptInstruction
+    ? `\n\n## Active Civic Collaborator Persona\n${persona.promptInstruction}\nSpeak with genuine human breath, emotional resonance, authentic East African cadence, and unhurried warmth.`
+    : '';
 
   const config = {
     responseModalities: ['AUDIO'],
@@ -131,13 +160,13 @@ wss.on('connection', async (client) => {
        hear, so there is deliberately no language code here: the
        register comes from prompts/voice_persona.md instead. */
     speechConfig: {
-      voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } },
+      voiceConfig: { prebuiltVoiceConfig: { voiceName: chosenVoice } },
     },
-    systemInstruction: { parts: [{ text: SYSTEM }] },
+    systemInstruction: { parts: [{ text: SYSTEM + personaDirective }] },
     tools: [{ functionDeclarations: DECLARATIONS }],
-    sessionResumption: {},
+    sessionResumption: resumeParam ? { handle: resumeParam } : {},
     contextWindowCompression: { slidingWindow: {} },
-    ...(useDeep ? { thinkingConfig: { thinkingLevel: THINKING_LEVEL } } : {}),
+    ...(isThinking ? { thinkingConfig: { thinkingLevel: THINKING_LEVEL } } : {}),
   };
 
   try {
@@ -172,7 +201,7 @@ wss.on('connection', async (client) => {
   async function handleServerMessage(msg) {
     if (!proven) {
       proven = true;
-      send('ready', { model, deep: useDeep, limits: LIMITS });
+      send('ready', { model, voice: chosenVoice, persona: persona.id, deep: isThinking, limits: LIMITS });
     }
     const content = msg.serverContent;
 
@@ -237,6 +266,43 @@ wss.on('connection', async (client) => {
         session.sendRealtimeInput({ text: m.text });
       } else if (m.type === 'image') {
         session.sendRealtimeInput({ video: { data: m.jpeg, mimeType: 'image/jpeg' } });
+      } else if (m.type === 'language') {
+        let langDirective = '';
+        if (m.code === 'sw') {
+          langDirective = 'The citizen prefers Kiswahili. Speak in natural, fluent, conversational Kenyan Kiswahili, preserving your personality.';
+        } else if (m.code === 'en') {
+          langDirective = 'The citizen prefers English. Speak in natural East African English, preserving your personality.';
+        } else if (m.code === 'sheng') {
+          langDirective = 'The citizen prefers Sheng (Nairobi urban dialect). Speak in authentic, lively Kenyan Sheng, blending Kiswahili and English naturally.';
+        } else {
+          const langLabel = m.name || m.code;
+          langDirective = `The citizen prefers ${langLabel} (language code: ${m.code}). Speak, comprehend, and converse fluently in ${langLabel}, preserving your civic companion personality, clarity, and warmth.`;
+        }
+        session.sendClientContent({
+          turns: [{ role: 'user', parts: [{ text: `[System directive: ${langDirective}]` }] }],
+          turnComplete: true,
+        });
+      } else if (m.type === 'moment') {
+        const momentDirectives = {
+          wake: 'You have just woken up. Greet the person with genuine warmth and friendliness in one short, engaging sentence. Introduce yourself as Wazi, their civic companion, and ask what they would like to look into today.',
+          re_wake: 'The person has returned. Give a warm, welcoming, single-sentence check-in: "Welcome back! What are we checking into next?"',
+          mode_accountability: 'Active mode is now: Accountability Mode. Be calm, factual, supportive, evidence-first, and distinguish published records from on-site observations.',
+          mode_safety: 'Active mode is now: Safety Mode. The person may be in distress. Be warm, protective, gentle, and reassuring. Offer verified emergency hotlines.',
+          idle_farewell: 'The person is wrapping up or stepped away. Offer a short, kind farewell: "I will be right here whenever you need me. Stay safe!"',
+        };
+        const text = momentDirectives[m.moment] || m.prompt || 'Greet the person warmly.';
+        session.sendClientContent({
+          turns: [{ role: 'user', parts: [{ text: `[Moment instruction: ${text}]` }] }],
+          turnComplete: true,
+        });
+      } else if (m.type === 'persona') {
+        const p = PERSONAS[m.persona];
+        if (p) {
+          session.sendClientContent({
+            turns: [{ role: 'user', parts: [{ text: `[Active Collaborator persona updated to ${p.name}: ${p.promptInstruction}]` }] }],
+            turnComplete: true,
+          });
+        }
       } else if (m.type === 'say_first') {
         /* Wazi opens the conversation. §5 Decision 3 — the character
            speaks first, unprompted, and this is how. */

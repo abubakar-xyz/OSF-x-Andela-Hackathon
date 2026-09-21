@@ -11,9 +11,10 @@
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, normalize, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = '/home/user/OSF-x-Andela-Hackathon';
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const SHOTS = process.env.SHOTS;
 const shot = async (page, name) => { if (!SHOTS) return; await page.screenshot({ path: `${SHOTS}/${name}.png` }); console.log(`  shot: ${name}`); };
 const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',

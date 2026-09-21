@@ -90,16 +90,113 @@ export function build_civic_draft({ payload, route, format = 'email', tone = 'pl
   let body;
   if (format === 'whatsapp') {
     body = [
-      `*${payload.entity.name}* — ${place}`,
+      `*CITIZEN INQUIRY: ${payload.entity.name.toUpperCase()}*`,
+      `📍 *Location:* ${place}`,
+      caseId ? `⚖️ *Ref:* Wazi Case ${caseId}` : '',
+      `📅 *Date:* ${fmtDate(nowISO())}`,
       '',
+      `*1. Summary of Facts:*`,
       summary,
       '',
-      `Evidence state: ${payload.evidence_state}.`,
-      payload.missing_fields.length ? `Still unknown: ${payload.missing_fields[0]}` : '',
+      `*2. Evidence State:* ${payload.evidence_state}`,
+      payload.missing_fields.length ? `❓ *Still Unclear:* ${payload.missing_fields[0]}` : '',
       '',
-      refs.length ? `Sources: ${refs.map((r) => `${r.publisher} (${fmtDate(r.published_at)})`).join(' · ')}` : '',
-      caseId ? `Wazi case ${caseId}` : '',
+      `*3. Request to Public Office:*`,
+      ask,
+      `*Responsible Office:* ${route.office}, ${route.body}`,
+      route.address ? `*Official Contact:* ${route.address.value}` : '',
+      '',
+      refs.length ? `*4. Sources Cited:*\n${refs.map((r) => `• [${r.n}] ${r.publisher} (${fmtDate(r.published_at)})`).join('\n')}` : '',
+      attachments.length ? `\n*Attachments:* ${attachments.join('; ')}` : '',
+      '',
+      `_Drafted under Article 35 of the Constitution of Kenya and the Access to Information Act, 2016._`,
     ].filter(Boolean).join('\n');
+  } else if (format === 'letter' || format === 'atia') {
+    const dateStr = fmtDate(nowISO());
+    const refLine = caseId ? `REF: WAZI/ATI/2026/${caseId}` : `REF: WAZI/ATI/2026`;
+    const recipientBlock = [
+      'TO:',
+      route.office,
+      route.body,
+      route.postal || (route.channel === 'email' ? `Email: ${route.address.value}` : route.address.value),
+    ].filter(Boolean).join('\n');
+
+    const formalSubject = format === 'atia'
+      ? `RE: FORMAL CITIZEN REQUEST FOR INFORMATION UNDER ARTICLE 35 OF THE CONSTITUTION OF KENYA AND SECTION 8 OF THE ACCESS TO INFORMATION ACT, 2016\nREGARDING: ${payload.entity.name.toUpperCase()} (${place})`
+      : `RE: STATUS ENQUIRY AND PUBLIC RECORD CLARIFICATION\nREGARDING: ${payload.entity.name.toUpperCase()} (${place})`;
+
+    const p1Legal = format === 'atia'
+      ? `1. PREAMBLE & STATUTORY BASIS\nI write pursuant to Article 35(1)(a) of the Constitution of Kenya, which guarantees every citizen the right of access to information held by the State, read together with Sections 4 and 8 of the Access to Information Act (No. 31 of 2016). As an accounting officer and designated public authority, this office is custodian of the public records concerning this facility.`
+      : `1. PREAMBLE\nI am writing to formally enquire regarding the current progress, public accountability status, and documentation concerning ${payload.entity.name} situated in ${place}.`;
+
+    const p2Record = `2. PUBLISHED PUBLIC RECORDS\n` +
+      (payload.record.length
+        ? payload.record.map((r) => `According to published official documentation (${r.label}), the record states verbatim: “${r.verbatim}” (dated ${fmtDate(r.fact.as_of)}).`).join(' ')
+        : `No formal tender award, contract allocation, or completion certificate is currently published in accessible public registries.`);
+
+    const p3Observation = payload.field.length
+      ? `3. SITE OBSERVATION\nOn ${fmtDate(payload.field[0]?.fact?.as_of || nowISO())}, an observation at the project site noted: ${payload.field[0]?.fact?.value}. These observations appear at variance with the published documentation.`
+      : `3. SITE OBSERVATION\nVerification on site has been requested to establish whether physical works correspond to official public records.`;
+
+    const p4Ask = format === 'atia'
+      ? `4. INFORMATION REQUESTED UNDER SECTION 8\nPursuant to the Access to Information Act, 2016, I formally request written disclosure of:\n  (a) The current completion certificate or official site inspection report.\n  (b) The approved contract sum, total disbursements released to date, and contractor identity.\n  (c) The approved revised schedule of completion, if delayed or reallocated.`
+      : `4. INFORMATION REQUESTED\nI respectfully request written clarification from this department regarding:\n  (a) The current operational and completion status of this facility.\n  (b) The date and findings of the most recent departmental site inspection.\n  (c) Copies of any public status notifications issued to the local community.`;
+
+    const p5Timeline = format === 'atia'
+      ? `5. STATUTORY TIMELINE\nPlease note that Section 9(1) of the Access to Information Act requires public authorities to make a decision and communicate it in writing expeditiously and in any event within twenty-one (21) days of receipt.`
+      : `5. RESPONSE TIMELINE\nI would be grateful for a formal acknowledgement of this enquiry within five (5) working days and a written response at your earliest convenience.`;
+
+    const detailBlock = length === 'full' && (payload.missing_fields.length || payload.limitations.length)
+      ? [
+          '6. MATTERS REQUIRING CLARIFICATION',
+          ...payload.missing_fields.map((m) => `  · ${m}`),
+          payload.limitations.length ? 'Known limitations of public sources:' : '',
+          ...payload.limitations.map((l) => `  · ${l}`),
+        ].filter(Boolean).join('\n')
+      : '';
+
+    const sourcesBlock = refs.length
+      ? `ANNEXURE A — SCHEDULE OF OFFICIAL SOURCES CITED:\n` +
+        refs.map((r) => `  [${r.n}] ${r.publisher}, “${r.title}”, published ${fmtDate(r.published_at)}, retrieved ${fmtDate(r.retrieved_at)}${r.is_fixture ? ' — DEMO FIXTURE' : ''}`).join('\n')
+      : '';
+
+    const attachmentsBlock = attachments.length
+      ? `ANNEXURE B — ATTACHED CITIZEN EVIDENCE:\n` + attachments.map((a) => `  · ${a}`).join('\n')
+      : '';
+
+    body = [
+      `DATE: ${dateStr}`,
+      refLine,
+      '',
+      recipientBlock,
+      '',
+      formalSubject,
+      '',
+      'Dear Sir / Madam,',
+      '',
+      p1Legal,
+      '',
+      p2Record,
+      '',
+      p3Observation,
+      '',
+      p4Ask,
+      '',
+      p5Timeline,
+      '',
+      detailBlock,
+      '',
+      'Yours faithfully,',
+      '',
+      '__________________________________________',
+      ...signOff,
+      '',
+      sourcesBlock,
+      '',
+      attachmentsBlock,
+      '',
+      'This document was prepared with Wazi for review by the citizen submitting it. It is a draft until formally signed and delivered.',
+    ].filter((line) => line !== '').join('\n\n');
   } else {
     const opening = tone === 'formal'
       ? `To the ${route.office}, ${route.body}`

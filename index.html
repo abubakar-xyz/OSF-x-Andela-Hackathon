@@ -25,10 +25,26 @@
       <!-- NIGHT — the companion side. §7 -->
       <main class="world night" id="main">
         <div class="night__top">
-          <button class="lang-chip" id="langBtn" type="button" aria-haspopup="dialog">
-            <span id="langLabel">English</span>
-            <span class="lang-tier" id="langTier">tested</span>
+          <button class="mode-badge" id="modeBadge" type="button" aria-haspopup="dialog" aria-label="Select civic collaborator and voice">
+            <span class="mode-dot-wrap">
+              <span class="mode-dot" id="modeDot"></span>
+              <span class="mode-dot-ping" id="modeDotPing"></span>
+            </span>
+            <div class="mode-text-group">
+              <span id="modeText" class="mode-title">Wazi • Civic Voice</span>
+              <span id="modeSub" class="mode-subtitle">LIVE 24KHZ DSP</span>
+            </div>
           </button>
+
+          <div class="night__top-right">
+            <button class="lang-chip" id="langBtn" type="button" aria-haspopup="dialog" aria-label="Change language">
+              <span id="langLabel">English</span>
+              <span class="lang-tier" id="langTier">tested</span>
+            </button>
+            <div class="brand-pill" title="Constitution of Kenya Article 35: Access to Information">
+              <span class="brand-pill__badge">ART. 35</span>
+            </div>
+          </div>
         </div>
 
         <div class="night__stage">
@@ -38,29 +54,109 @@
           <p class="statusline" id="statusLine" role="status" aria-live="polite"></p>
         </div>
 
-        <div class="night__foot">
-          <button class="night-btn" id="cameraBtn" type="button" aria-label="Show Wazi something with the camera">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h2L9 4h6l1.5 2h2A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-9Z"/>
-              <circle cx="12" cy="13" r="3.6"/>
-            </svg>
-            <span>Show</span>
-          </button>
+        <div class="night__dock-wrap">
+          <!-- SABI-inspired Dynamic Audio & Wake Dock -->
+          <div class="dock-card" id="dockCard">
+            <div class="dock-card__status">
+              <div class="dock-card__icon" id="dockIcon" title="Live audio activity">
+                <svg id="dockMicIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="22"/>
+                </svg>
+                <svg id="dockSpeakerIcon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                </svg>
+              </div>
+              <div class="dock-card__meta">
+                <span class="dock-card__label" id="dockLabel">Ready when you are</span>
+                <!-- 12-segment audio visualizer meter -->
+                <div class="audio-visualizer" id="audioVisualizer" aria-hidden="true">
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                  <span class="audio-bar"></span>
+                </div>
+              </div>
+            </div>
 
-          <button class="night-btn" id="casesBtn" type="button" aria-label="Open my saved cases">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <path d="M4 7h16v12H4z"/><path d="M9 7V5h6v2"/>
-            </svg>
-            <span>Cases</span>
-          </button>
+            <!-- Wake / Sleep Power Trigger -->
+            <button class="wake-power-btn" id="wakePowerBtn" type="button" aria-label="Toggle Wazi wake state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="wake-icon" aria-hidden="true">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                <line x1="12" y1="2" x2="12" y2="12"/>
+              </svg>
+              <span id="wakePowerLabel">Wake Wazi</span>
+            </button>
+          </div>
 
-          <button class="night-btn" id="typeBtn" type="button" aria-label="Type instead of speaking">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <rect x="2.5" y="6" width="19" height="12" rx="2"/>
-              <path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"/>
-            </svg>
-            <span>Type</span>
-          </button>
+          <!-- Secondary Actions Row -->
+          <div class="night__foot">
+            <button class="night-btn" id="cameraBtn" type="button" aria-label="Show Wazi something with the camera">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h2L9 4h6l1.5 2h2A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-9Z"/>
+                <circle cx="12" cy="13" r="3.6"/>
+              </svg>
+              <span>Show</span>
+            </button>
+
+            <button class="night-btn" id="casesBtn" type="button" aria-label="Open my saved cases">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                <path d="M4 7h16v12H4z"/><path d="M9 7V5h6v2"/>
+              </svg>
+              <span>Cases</span>
+            </button>
+
+            <button class="night-btn" id="typeBtn" type="button" aria-label="Type instead of speaking">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                <rect x="2.5" y="6" width="19" height="12" rx="2"/>
+                <path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"/>
+              </svg>
+              <span>Type</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Continuous Cyber/Civic Telemetry Marquee Ticker -->
+        <div class="civic-ticker" aria-hidden="true">
+          <div class="civic-ticker__track">
+            <span>CONSTITUTION OF KENYA ART. 35</span>
+            <span class="ticker-dot">•</span>
+            <span>ACCESS TO INFORMATION ACT 2016</span>
+            <span class="ticker-dot">•</span>
+            <span>OFFICE OF THE AUDITOR-GENERAL (OAG)</span>
+            <span class="ticker-dot">•</span>
+            <span>CONTROLLER OF BUDGET (COB)</span>
+            <span class="ticker-dot">•</span>
+            <span>KENHA & KERRA ROADS</span>
+            <span class="ticker-dot">•</span>
+            <span>47 COUNTY GOVERNMENTS</span>
+            <span class="ticker-dot">•</span>
+            <span>GEMINI LIVE 24KHZ REALTIME DSP</span>
+            <span class="ticker-dot">•</span>
+            <span>CONSTITUTION OF KENYA ART. 35</span>
+            <span class="ticker-dot">•</span>
+            <span>ACCESS TO INFORMATION ACT 2016</span>
+            <span class="ticker-dot">•</span>
+            <span>OFFICE OF THE AUDITOR-GENERAL (OAG)</span>
+            <span class="ticker-dot">•</span>
+            <span>CONTROLLER OF BUDGET (COB)</span>
+            <span class="ticker-dot">•</span>
+            <span>KENHA & KERRA ROADS</span>
+            <span class="ticker-dot">•</span>
+            <span>47 COUNTY GOVERNMENTS</span>
+            <span class="ticker-dot">•</span>
+            <span>GEMINI LIVE 24KHZ REALTIME DSP</span>
+          </div>
         </div>
       </main>
 
