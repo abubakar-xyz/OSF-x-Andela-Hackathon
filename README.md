@@ -149,6 +149,7 @@ The full nine Product Laws are in [`DESIGN.md`](DESIGN.md) §6.
 
 | | |
 |---|---|
+| [`HANDOFF.md`](HANDOFF.md) | **State of things, what is and isn't done, and how to carry the voice layer into AI Studio** |
 | [`DESIGN.md`](DESIGN.md) | The complete specification — idea, character, tokens, machine, evidence model, architecture, budgets, demo |
 | [`DECISIONS.md`](DECISIONS.md) | Every deviation and why, including corrections found while implementing the design |
 | [`THREAT_MODEL.md`](THREAT_MODEL.md) | Who could be harmed, by what, what we do — and what we are exposed to and are not fixing |

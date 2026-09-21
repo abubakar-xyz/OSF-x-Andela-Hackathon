@@ -24,6 +24,7 @@ import { validatePack, PACK_FILES } from '../src/evidence/pack.js';
 const PORT = Number(process.env.WAZI_RELAY_PORT || 8787);
 const API_KEY = process.env.WAZI_API_KEY || process.env.GEMINI_API_KEY;
 const PACK_ID = process.env.WAZI_PACK || 'ke-siaya';
+const VOICE = process.env.WAZI_VOICE || 'Kore';
 
 if (!API_KEY) {
   console.error(
@@ -48,6 +49,7 @@ const pack = packResult.pack;
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const SYSTEM = readFileSync('prompts/identity.md', 'utf8') + '\n\n' +
+               readFileSync('prompts/voice_persona.md', 'utf8') + '\n\n' +
                readFileSync('prompts/conversation_policy.md', 'utf8') + '\n\n' +
                readFileSync('prompts/evidence_policy.md', 'utf8') + '\n\n' +
                readFileSync('prompts/safety_policy.md', 'utf8') + '\n\n' +
@@ -101,6 +103,16 @@ wss.on('connection', async (client) => {
     /* AUDIO or TEXT, never both — so captions come from transcription. */
     inputAudioTranscription: {},
     outputAudioTranscription: {},
+    /* The base voice. An earlier version set no speechConfig at all,
+       which left the voice to whatever the default happened to be —
+       the single biggest thing standing between this and a character
+       that sounds like anyone in particular.
+       Native-audio models pick the LANGUAGE themselves from what they
+       hear, so there is deliberately no language code here: the
+       register comes from prompts/voice_persona.md instead. */
+    speechConfig: {
+      voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } },
+    },
     systemInstruction: { parts: [{ text: SYSTEM }] },
     tools: [{ functionDeclarations: DECLARATIONS }],
     sessionResumption: {},
@@ -235,6 +247,7 @@ http.listen(PORT, () => {
   console.log(`\n  Wazi relay on ws://localhost:${PORT}`);
   console.log(`  host model   ${MODELS.host}`);
   console.log(`  deep model   ${MODELS.deep}  (thinking_level: ${THINKING_LEVEL})`);
+  console.log(`  voice        ${VOICE}`);
   console.log(`  pack         ${PACK_ID}${pack.meta.is_fixture ? '  [DEMO FIXTURE]' : ''}`);
   console.log(`  tools        ${DECLARATIONS.map((d) => d.name).join(', ')}`);
   console.log(`\n  Point the app at it:  WAZI_RELAY_URL=ws://localhost:${PORT}\n`);

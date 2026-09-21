@@ -19,6 +19,28 @@
 const IN_RATE = 16000;
 const OUT_RATE = 24000;
 
+/**
+ * Barge-in guarding.
+ *
+ * The microphone hears the speaker. A naive "any sound above threshold
+ * cancels playback" gate therefore makes Wazi interrupt ITSELF on its
+ * own output — the classic voice-agent failure, and the one an earlier
+ * version of this file had.
+ *
+ * Three guards, together:
+ *   · a higher threshold while Wazi is speaking than while it is idle
+ *   · sustained over several frames, so a cough or a door does not count
+ *   · a grace window at the start of a turn, so Wazi gets to finish at
+ *     least its opening clause before its own first syllables can
+ *     trigger a cancel
+ */
+const BARGE = {
+  idleRms: 0.045,        /* not speaking: a light touch is enough        */
+  speakingRms: 0.115,    /* speaking: must be clearly louder than bleed  */
+  sustainFrames: 3,      /* consecutive frames over threshold            */
+  graceMs: 900,          /* from the start of a turn, ignore everything  */
+};
+
 export const relayURL = () =>
   globalThis.WAZI_RELAY_URL ||
   document.querySelector('meta[name="wazi-relay"]')?.content ||
@@ -40,6 +62,8 @@ export function createLiveVoice({
   let playhead = 0;
   let queued = [];
   let speaking = false;
+  let speechStartedAt = 0;
+  let loudFrames = 0;
   let open = false;
   let model = '';
 
@@ -51,6 +75,7 @@ export function createLiveVoice({
     for (const node of queued) { try { node.stop(); } catch { /* already ended */ } }
     queued = [];
     playhead = actx ? actx.currentTime : 0;
+    loudFrames = 0;
     if (speaking) { speaking = false; onState?.('listening'); }
   }
 
@@ -71,7 +96,10 @@ export function createLiveVoice({
     const gain = actx.createGain();
     node.connect(gain); gain.connect(actx.destination);
 
-    playhead = Math.max(playhead, actx.currentTime + 0.02);
+    /* ~150ms of slack. At 20ms the queue underran between chunks on
+       anything but a perfect connection and the speech came out
+       stuttered. */
+    playhead = Math.max(playhead, actx.currentTime + 0.15);
     node.start(playhead);
     playhead += buf.duration;
     queued.push(node);
@@ -79,7 +107,7 @@ export function createLiveVoice({
       queued = queued.filter((n) => n !== node);
       if (!queued.length && speaking) { speaking = false; onState?.('listening'); }
     };
-    if (!speaking) { speaking = true; onState?.('speaking'); }
+    if (!speaking) { speaking = true; speechStartedAt = performance.now(); loudFrames = 0; onState?.('speaking'); }
     /* Cheap amplitude for the core pulse: RMS of the chunk. */
     let sum = 0;
     for (let i = 0; i < ch.length; i += 16) sum += ch[i] * ch[i];
@@ -143,7 +171,17 @@ export function createLiveVoice({
     for (let i = 0; i < int16.length; i += 8) { const v = int16[i] / 32768; sum += v * v; }
     const rms = Math.sqrt(sum / (int16.length / 8));
     onEnergy?.(Math.min(1, rms * 4));
-    if (speaking && rms > 0.06) flushPlayback();
+
+    if (speaking) {
+      const past = performance.now() - speechStartedAt > BARGE.graceMs;
+      loudFrames = rms > BARGE.speakingRms ? loudFrames + 1 : 0;
+      if (past && loudFrames >= BARGE.sustainFrames) {
+        loudFrames = 0;
+        flushPlayback();          /* deliberate interruption — §10.3 */
+      }
+    } else {
+      loudFrames = 0;
+    }
 
     let bin = '';
     const bytes = new Uint8Array(int16.buffer);
