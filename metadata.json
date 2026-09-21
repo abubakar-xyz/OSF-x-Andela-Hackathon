@@ -1,0 +1,11 @@
+{
+  "name": "Wazi",
+  "description": "A civic companion that reads the public record back to you, shows where it differs from what you are looking at, and writes to the office that owes you an answer.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

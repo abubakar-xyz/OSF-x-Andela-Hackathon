@@ -4,7 +4,10 @@
   "description": "Wazi — open the record, see for yourself. A civic companion for the Andela x OSF 2026 hackathon.",
   "type": "module",
   "scripts": {
-    "start": "python3 -m http.server 4173",
+    "build": "node scripts/vendor-three.mjs",
+    "start": "node server/relay.mjs",
+    "dev": "node server/relay.mjs",
+    "lint": "node scripts/validate-pack.mjs && node scripts/check-contrast.mjs",
     "test": "node --test \"tests/*.test.mjs\"",
     "validate:pack": "node scripts/validate-pack.mjs",
     "check": "npm run validate:pack && npm run check:contrast && npm test",
@@ -13,7 +16,6 @@
     "verify:drills": "node tests/browser/drills.mjs",
     "verify:browser": "npm run verify:journey && npm run verify:drills",
     "relay": "node server/relay.mjs",
-    "dev": "node server/relay.mjs & python3 -m http.server 4173",
     "vendor:three": "node scripts/vendor-three.mjs",
     "postinstall": "node scripts/vendor-three.mjs"
   },
@@ -22,7 +24,8 @@
   },
   "dependencies": {
     "@google/genai": "^2.23.0",
-    "ws": "^8.21.3",
-    "three": "^0.186.0"
+    "express": "^5.2.1",
+    "three": "^0.186.0",
+    "ws": "^8.21.3"
   }
 }

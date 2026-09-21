@@ -41,10 +41,16 @@ const BARGE = {
   graceMs: 900,          /* from the start of a turn, ignore everything  */
 };
 
-export const relayURL = () =>
-  globalThis.WAZI_RELAY_URL ||
-  document.querySelector('meta[name="wazi-relay"]')?.content ||
-  '';
+export const relayURL = () => {
+  if (globalThis.WAZI_RELAY_URL) return globalThis.WAZI_RELAY_URL;
+  const meta = document.querySelector('meta[name="wazi-relay"]')?.content;
+  if (meta) return meta;
+  if (typeof location !== 'undefined' && location.host) {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${location.host}/ws`;
+  }
+  return '';
+};
 
 export const isConfigured = () => {
   const u = relayURL();

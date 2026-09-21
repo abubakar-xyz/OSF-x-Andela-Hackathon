@@ -15,30 +15,35 @@
 import { WebSocketServer } from 'ws';
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import express from 'express';
 import { GoogleGenAI } from '@google/genai';
 
 import { MODELS, AUDIO, LIMITS, THINKING_LEVEL } from './models.config.mjs';
 import { DECLARATIONS, createToolRunner } from './tools.bridge.mjs';
 import { validatePack, PACK_FILES } from '../src/evidence/pack.js';
 
-const PORT = Number(process.env.WAZI_RELAY_PORT || 8787);
-const API_KEY = process.env.WAZI_API_KEY || process.env.GEMINI_API_KEY;
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = join(__dirname, '..');
+
+const PORT = 3000;
+const getApiKey = () => process.env.WAZI_API_KEY || process.env.GEMINI_API_KEY;
 const PACK_ID = process.env.WAZI_PACK || 'ke-siaya';
 const VOICE = process.env.WAZI_VOICE || 'Kore';
 
-if (!API_KEY) {
-  console.error(
-    '\n  WAZI_API_KEY is not set.\n\n' +
-    '  The relay cannot start without it, and it will not pretend to.\n' +
-    '  Get a key at https://aistudio.google.com/apikey, then:\n\n' +
-    '      WAZI_API_KEY=your-key npm run relay\n\n' +
-    '  Without the relay, Wazi runs on the browser speech engine and says so.\n');
-  process.exit(1);
+if (!getApiKey()) {
+  console.warn(
+    '\n  [Wazi] GEMINI_API_KEY / WAZI_API_KEY is not set.\n' +
+    '  The relay is running in standby mode. WebSocket sessions will report unavailable\n' +
+    '  until an API key is set in your environment. In the meantime, Wazi will use\n' +
+    '  the browser on-device speech engine as designed.\n'
+  );
 }
 
 /* The pack is loaded once, here, and never shipped to the model. */
 const raw = {};
-for (const f of PACK_FILES) raw[f] = JSON.parse(readFileSync(`data/packs/${PACK_ID}/${f}.json`, 'utf8'));
+for (const f of PACK_FILES) raw[f] = JSON.parse(readFileSync(join(rootDir, `data/packs/${PACK_ID}/${f}.json`), 'utf8'));
 const packResult = validatePack(raw);
 if (!packResult.ok) {
   console.error(`  pack ${PACK_ID} is invalid:\n   ${packResult.errors.join('\n   ')}`);
@@ -46,13 +51,11 @@ if (!packResult.ok) {
 }
 const pack = packResult.pack;
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
-const SYSTEM = readFileSync('prompts/identity.md', 'utf8') + '\n\n' +
-               readFileSync('prompts/voice_persona.md', 'utf8') + '\n\n' +
-               readFileSync('prompts/conversation_policy.md', 'utf8') + '\n\n' +
-               readFileSync('prompts/evidence_policy.md', 'utf8') + '\n\n' +
-               readFileSync('prompts/safety_policy.md', 'utf8') + '\n\n' +
+const SYSTEM = readFileSync(join(rootDir, 'prompts/identity.md'), 'utf8') + '\n\n' +
+               readFileSync(join(rootDir, 'prompts/voice_persona.md'), 'utf8') + '\n\n' +
+               readFileSync(join(rootDir, 'prompts/conversation_policy.md'), 'utf8') + '\n\n' +
+               readFileSync(join(rootDir, 'prompts/evidence_policy.md'), 'utf8') + '\n\n' +
+               readFileSync(join(rootDir, 'prompts/safety_policy.md'), 'utf8') + '\n\n' +
                'You have tools. Use check_public_record for any question about whether ' +
                'something was built, funded, finished or delivered — never answer such a ' +
                'question from your own knowledge. While a tool runs you may speak a short ' +
@@ -61,14 +64,21 @@ const SYSTEM = readFileSync('prompts/identity.md', 'utf8') + '\n\n' +
                'Never read figures, dates, source names or reference numbers aloud — they are ' +
                'on screen.';
 
-const http = createServer((req, res) => {
-  if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, models: MODELS, pack: PACK_ID, fixture: pack.meta.is_fixture }));
-    return;
-  }
-  res.writeHead(404); res.end();
+const app = express();
+
+app.get('/health', (req, res) => {
+  res.json({ ok: true, models: MODELS, pack: PACK_ID, fixture: pack.meta.is_fixture });
 });
+
+// Serve static files from repository root
+app.use(express.static(rootDir));
+
+// SPA fallback for page navigation
+app.use((req, res) => {
+  res.sendFile(join(rootDir, 'index.html'));
+});
+
+const http = createServer(app);
 
 const wss = new WebSocketServer({ server: http });
 
@@ -76,6 +86,16 @@ wss.on('connection', async (client) => {
   const send = (type, data) => {
     if (client.readyState === 1) client.send(JSON.stringify({ type, ...data }));
   };
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    send('unavailable', {
+      reason: 'WAZI_API_KEY / GEMINI_API_KEY is not set. Falling back to on-device speech.',
+    });
+    return;
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   let session = null;
   let resumptionHandle = null;
@@ -243,12 +263,11 @@ wss.on('connection', async (client) => {
   client.on('close', () => clearTimeout(warn));
 });
 
-http.listen(PORT, () => {
-  console.log(`\n  Wazi relay on ws://localhost:${PORT}`);
+http.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n  Wazi server running on http://0.0.0.0:${PORT}`);
   console.log(`  host model   ${MODELS.host}`);
   console.log(`  deep model   ${MODELS.deep}  (thinking_level: ${THINKING_LEVEL})`);
   console.log(`  voice        ${VOICE}`);
   console.log(`  pack         ${PACK_ID}${pack.meta.is_fixture ? '  [DEMO FIXTURE]' : ''}`);
   console.log(`  tools        ${DECLARATIONS.map((d) => d.name).join(', ')}`);
-  console.log(`\n  Point the app at it:  WAZI_RELAY_URL=ws://localhost:${PORT}\n`);
 });
