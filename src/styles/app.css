@@ -19,6 +19,10 @@ img, svg, canvas { display: block; max-width: 100%; }
   outline-offset: 2px;
   border-radius: var(--r-chip);
 }
+/* The ring has to be visible against what it actually sits on. */
+.day :focus-visible, .sheet :focus-visible, .receipt :focus-visible {
+  outline-color: var(--focus-ring-day);
+}
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;

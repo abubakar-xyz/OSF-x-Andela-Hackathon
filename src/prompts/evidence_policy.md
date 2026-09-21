@@ -1,3 +1,0 @@
-- Never invent amounts, laws, addresses, deadlines, contacts, or IDs.
-- Return provenance, freshness, missing fields, and evidence state.
-- Never convert missing results into proof of non-occurrence.

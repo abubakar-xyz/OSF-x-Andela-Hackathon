@@ -60,6 +60,9 @@ export function resolve_jurisdiction(clues = [], pack, coarseLocation = null) {
   if (!admin1) return fail('resolve_jurisdiction', 'no location clue and no coarse location offered');
   return ok({
     country: pack.meta.country, admin1, admin2,
+    /* Falling back to the pack's own area is an assumption, not a
+       reading. Downstream must be able to tell the difference. */
+    inferred: !hit && !coarseLocation?.admin1,
     source_id: pack.meta.is_fixture ? pack.sources[0].id : null,
     retrieved_at: nowISO(),
   });
@@ -88,15 +91,22 @@ export function resolve_civic_entity(clues = [], pack, jurisdiction = {}) {
   const ref = clues.find((c) => c.key === 'reference')?.value;
 
   const scored = pack.entities.map((e) => {
-    let score = 0;
-    if (ref && norm(e.reference) === norm(ref)) score += 10;
+    /* Identity has to come from the name or the reference number.
+       Being in the same county is a tie-breaker, never a match — an
+       earlier version let jurisdiction alone score, which meant every
+       entity in the pack "matched" every utterance. */
+    let identity = 0;
+    if (ref && norm(e.reference) === norm(ref)) identity += 10;
     const names = [e.name, ...(e.aliases || [])];
-    for (const n of names) if (text.includes(norm(n))) score += 6;
-    for (const tok of norm(e.name).split(' ')) if (tok.length > 3 && text.includes(tok)) score += 1;
+    for (const n of names) if (text.includes(norm(n))) identity += 6;
+    for (const tok of norm(e.name).split(' ')) if (tok.length > 3 && text.includes(tok)) identity += 1;
+    if (identity === 0) return { entity: e, score: 0, identity: 0 };
+
+    let score = identity;
     if (jurisdiction.admin2 && e.admin2 === jurisdiction.admin2) score += 2;
     else if (jurisdiction.admin1 && e.admin1 === jurisdiction.admin1) score += 1;
-    return { entity: e, score };
-  }).filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
+    return { entity: e, score, identity };
+  }).filter((s) => s.identity > 0).sort((a, b) => b.score - a.score);
 
   if (!scored.length) return fail('resolve_civic_entity', 'no entity in this pack matches those clues');
 

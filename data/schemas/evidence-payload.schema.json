@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wazi.invalid/schemas/evidence-payload.schema.json",
+  "title": "Wazi EvidencePayload",
+  "description": "The only shape the interface will render. Runtime validation lives in src/evidence/types.js and runs at both boundaries; this file is the published contract for anyone building a different client or a different worker. DESIGN.md §19.",
+  "type": "object",
+  "required": ["claim", "entity", "alternatives", "record", "field", "agreements", "differences",
+               "missing_fields", "limitations", "sources", "evidence_state", "retrieved_at", "failed_checks"],
+  "properties": {
+    "claim": { "type": "string", "minLength": 1, "description": "The question being checked, in the person's own words." },
+    "entity": {
+      "type": "object", "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string" }, "name": { "type": "string", "minLength": 1 },
+        "sector": { "type": "string" }, "admin1": { "type": "string" }, "admin2": { "type": "string" }
+      }
+    },
+    "alternatives": {
+      "type": "array",
+      "description": "Near-miss entities. Mistaken identity is expected, not exceptional — the interface always offers the way out.",
+      "items": { "type": "object", "required": ["id", "name"],
+                 "properties": { "id": { "type": "string" }, "name": { "type": "string" } } }
+    },
+    "record": { "type": "array", "items": { "$ref": "#/$defs/labelledFact" } },
+    "field":  { "type": "array", "items": { "$ref": "#/$defs/labelledFact" } },
+    "agreements": { "type": "array", "items": { "type": "string" } },
+    "differences": { "type": "array", "items": { "type": "string" } },
+    "missing_fields": {
+      "type": "array", "minItems": 1, "items": { "type": "string" },
+      "description": "Mandatory and never empty. There are always gaps; a payload claiming none is a bug."
+    },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "sources": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/source" } },
+    "evidence_state": { "$ref": "#/$defs/evidenceState" },
+    "previous_state": { "oneOf": [{ "$ref": "#/$defs/evidenceState" }, { "type": "null" }],
+                        "description": "Set when Check Again revised the verdict. Never hidden." },
+    "revision_note": { "type": ["string", "null"] },
+    "retrieved_at": { "type": "string", "format": "date-time" },
+    "failed_checks": {
+      "type": "array",
+      "description": "A tool failure is a visible product state, never a silence.",
+      "items": { "type": "object", "required": ["tool", "label", "reason"],
+                 "properties": { "tool": { "type": "string" }, "label": { "type": "string" }, "reason": { "type": "string" } } }
+    }
+  },
+  "$defs": {
+    "evidenceState": {
+      "enum": ["VERIFIED", "CORROBORATED", "REPORTED", "CONFLICTING", "UNKNOWN"],
+      "description": "Five rungs, fixed words. There is no numeric confidence anywhere in this product."
+    },
+    "fact": {
+      "type": "object",
+      "required": ["value", "source_id", "observed", "state", "as_of"],
+      "description": "There is no such thing as an unsourced Fact. source_id must resolve against this payload's own sources array.",
+      "properties": {
+        "value": {}, "unit": { "type": "string" },
+        "source_id": { "type": "string", "minLength": 1 },
+        "observed": { "enum": ["stated", "derived", "user_observed"] },
+        "state": { "$ref": "#/$defs/evidenceState" },
+        "as_of": { "type": ["string", "null"] }
+      }
+    },
+    "labelledFact": {
+      "type": "object", "required": ["label", "fact"],
+      "properties": {
+        "label": { "type": "string" },
+        "verbatim": { "type": "string", "description": "Exact official wording, quoted, never paraphrased." },
+        "fact": { "$ref": "#/$defs/fact" },
+        "limitations": { "type": "array", "items": { "type": "string" } },
+        "claim_type": { "enum": ["budget_allocation", "contract_award", "payment", "reported_completion",
+                                 "scope_change", "audit_finding", "reported_observation"] }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["id", "publisher", "title", "tier", "published_at", "retrieved_at", "excerpt"],
+      "properties": {
+        "id": { "type": "string" }, "publisher": { "type": "string" }, "title": { "type": "string" },
+        "url": { "type": "string" },
+        "tier": { "enum": ["primary", "credible", "user", "unverified"] },
+        "published_at": { "type": ["string", "null"], "description": "null is legal and renders as \"undated\"." },
+        "retrieved_at": { "type": "string", "description": "Never optional. Freshness is a claim we have to be able to make." },
+        "excerpt": { "type": "string", "minLength": 1 },
+        "quality_notes": { "type": "string" },
+        "is_fixture": { "type": "boolean", "description": "true forces the demo-data ribbon to render." }
+      }
+    }
+  }
+}

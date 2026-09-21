@@ -29,12 +29,12 @@
 
   --amber-400: #FFD37A;
   --amber-500: #F4B942;
-  --amber-700: #9C6B0C;
+  --amber-700: #8A5F0A;  /* amber TEXT on paper — darkened to clear 4.5:1 */
 
   /* ─── Evidence states. Word + glyph always accompany. ────── */
   --state-verified:     #4BCB91;  --state-verified-ink:     #1C6B46;
   --state-corroborated: #16C6B1;  --state-corroborated-ink: #0B6F63;
-  --state-reported:     #F4B942;  --state-reported-ink:     #9C6B0C;
+  --state-reported:     #F4B942;  --state-reported-ink:     #8A5F0A;
   --state-conflicting:  #EC7067;  --state-conflicting-ink:  #9E2C24;
   --state-unknown:      #78909A;  --state-unknown-ink:      #3E545E;
 
@@ -42,7 +42,10 @@
   --slate-700: #47606B;
 
   /* ─── Semantic ───────────────────────────────────────────── */
-  --focus-ring: #FFD37A;
+  --focus-ring:     #FFD37A;   /* Night: 12.8:1 on ink            */
+  --focus-ring-day: #0B4A54;   /* Day: amber on paper is 1.3:1 and
+                                  effectively invisible — the ring
+                                  needs its own value per world.  */
   --danger:     #EC7067;
   --scrim:      rgba(5, 18, 26, 0.72);
 

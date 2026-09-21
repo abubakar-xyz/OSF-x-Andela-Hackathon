@@ -1,10 +1,13 @@
 {
   "name": "wazi-poc",
   "version": "0.1.0",
-  "description": "Wazi hackathon proof of concept",
+  "description": "Wazi — open the record, see for yourself. A civic companion for the Andela x OSF 2026 hackathon.",
   "type": "module",
   "scripts": {
-    "start": "python -m http.server 4173",
-    "test": "node --test"
+    "start": "python3 -m http.server 4173",
+    "test": "node --test \"tests/*.test.mjs\"",
+    "validate:pack": "node scripts/validate-pack.mjs",
+    "check": "npm run validate:pack && npm run check:contrast && npm test",
+    "check:contrast": "node scripts/check-contrast.mjs"
   }
 }

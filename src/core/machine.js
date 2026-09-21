@@ -90,7 +90,13 @@ const GUARDS = {
     return null;
   },
   disclosure(ctx, from) {
-    if (from !== 'drafting') return 'disclosure is only reachable from drafting';
+    /* Forward, only from drafting — you cannot skip the draft. Backward
+       from export is allowed so someone can change what they shared and
+       export again; re-entering export still needs a fresh APPROVE,
+       which is the only edge into it. */
+    if (from !== 'drafting' && from !== 'export') {
+      return 'disclosure is only reachable from drafting, or back from export';
+    }
     return null;
   },
   drafting(ctx) {
