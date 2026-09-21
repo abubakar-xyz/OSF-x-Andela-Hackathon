@@ -1,7 +1,7 @@
 {
-  "name": "nuru-civic-poc",
+  "name": "wazi-poc",
   "version": "0.1.0",
-  "description": "NURU Civic hackathon proof of concept",
+  "description": "Wazi hackathon proof of concept",
   "type": "module",
   "scripts": {
     "start": "python -m http.server 4173",

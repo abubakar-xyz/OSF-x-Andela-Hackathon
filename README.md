@@ -33,9 +33,6 @@ Kiswahili phrase for open government, *sema wazi* means speak plainly, and a pro
 often have to say "I don't know" cannot be named after truth. Reasoning in
 [`DESIGN.md §1`](DESIGN.md).
 
-> **The rename is not yet applied to the code.** `src/` still carries the NURU name from the
-> baseline POC. That is tracked as the next change, not an oversight.
-
 ---
 
 ## What the current POC demonstrates
