@@ -22,6 +22,7 @@ import { shareTwoTruths } from './components/shareImage.js';
 import { DraftStudio } from './components/draftStudio.js';
 import { DisclosureReview } from './components/disclosure.js';
 import { RouteCard, NoRouteCard } from './components/routeCard.js';
+import { SearchLeadCard, ScopeCard } from './components/searchLead.js';
 import { CaseReceipt, newCaseId } from './components/caseReceipt.js';
 import { CaptionRibbon } from './components/captionRibbon.js';
 import { ClueList } from './components/clueRow.js';
@@ -209,6 +210,90 @@ async function handleUtterance(text) {
   await verify(text);
 }
 
+/* ── Live web search (server/webSearch.mjs) ───────────────────────────── */
+
+/** The browser never talks to Gemini directly — same rule as voice. This
+ *  just relays to the same relay the live-voice path already trusts, and
+ *  fails the same honest way when there is none configured. */
+async function civicSearch(query, context = '') {
+  if (!liveConfigured()) return { ok: false, reason: 'no relay configured' };
+  try {
+    const res = await fetch('/api/civic-search', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, context }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { ok: false, reason: String(err?.message ?? err) };
+  }
+}
+
+/**
+ * `lead` only ever arrives here from the live-voice path — the relay
+ * runs the search server-side, so a miss costs nothing but latency, and
+ * the model can offer it as a natural aside mid-conversation.
+ *
+ * The typed/browser path has no server context of its own; it would
+ * have to `fetch()` `/api/civic-search` itself, and a deployment with no
+ * relay behind it (a plain static host, which this PWA explicitly
+ * supports) turns that into a failed request logged to the console on
+ * every single miss — noise with no one to see it, since nothing here
+ * needs a live search to already have run. So that path only ever gets
+ * `scope`, and search happens on an explicit tap — see `runQuerySearch`.
+ */
+function showSearchLead(lead, scope, utterance = '') {
+  toDay((body) => {
+    if (lead) body.append(SearchLeadCard(lead, { onOpenScope: scope ? () => showScope(scope, utterance) : null }));
+    if (scope && !lead) body.append(ScopeCard(scope, { onSearchCategory: (cat) => runScopeSearch(cat, scope) }));
+  });
+}
+
+function showScope(scope, utterance = '') {
+  toDay((body) => {
+    if (utterance) {
+      body.append(el('button', {
+        class: 'btn', type: 'button', style: { width: '100%', marginBottom: '12px' },
+        text: 'Search the web for this, live', onclick: () => runQuerySearch(utterance, scope),
+      }));
+    }
+    body.append(ScopeCard(scope, { onSearchCategory: (cat) => runScopeSearch(cat, scope) }));
+  });
+}
+
+async function runQuerySearch(query, scope) {
+  status('Searching live…');
+  const r = await civicSearch(query, scope?.country?.name ?? '');
+  status('');
+  toDay((body) => {
+    if (r.ok) {
+      body.append(SearchLeadCard(r, { onOpenScope: scope ? () => showScope(scope, query) : null }));
+    } else {
+      body.append(el('article', { class: 'card' },
+        el('p', { class: 'card__label', text: 'Live search' }),
+        el('p', { class: 'tt__row', text: `Couldn't search live: ${r.reason}` })));
+      if (scope) body.append(ScopeCard(scope, { onSearchCategory: (cat) => runScopeSearch(cat, scope) }));
+    }
+  });
+}
+
+async function runScopeSearch(cat, scope) {
+  status(`Searching for ${cat.label.toLowerCase()}…`);
+  const r = await civicSearch(cat.query, scope.country.name);
+  status('');
+  toDay((body) => {
+    body.append(el('p', { class: 'card__label', text: scope.country.name }));
+    if (r.ok) {
+      body.append(SearchLeadCard(r, {}));
+    } else {
+      body.append(el('article', { class: 'card' },
+        el('p', { class: 'card__label', text: cat.label }),
+        el('p', { class: 'tt__row', text: `Couldn't search live: ${r.reason}` })));
+    }
+    body.append(el('button', { class: 'btn btn--ghost', type: 'button', text: '← Back', style: { marginTop: '16px', width: '100%' },
+      onclick: () => showScope(scope) }));
+  });
+}
+
 /* ── Verification (§8.4 motes, §10.4 no spinner) ─────────────────────── */
 
 async function verify(utterance) {
@@ -225,6 +310,8 @@ async function verify(utterance) {
 
   const result = await runVerification({
     pack: app.pack, utterance, image: app.image, online: app.online,
+    /* No `search` here — see showSearchLead's header comment. The typed
+       path offers a live search as a tap, never as a silent fetch. */
     pace: app.reduced ? 0 : 340,
     onMote: (m) => {
       running.set(m.tool, m);
@@ -240,9 +327,13 @@ async function verify(utterance) {
     /* Law 4 — nothing found is never presented as disproof. */
     app.machine.assign({ evidence: null });
     app.machine.send('TOOL_FAILED');
-    say(result.say ?? "I couldn't check that, and I'm not going to guess.");
+    say(result.lead
+      ? "I couldn't confirm this in what I've checked, but a live search turned up something — " +
+        "it's on screen, and I haven't verified it. Read the source yourself before trusting it."
+      : (result.say ?? "I couldn't check that, and I'm not going to guess."));
     app.machine.send('DONE');
     syncAperture();
+    if (result.lead || result.scope) showSearchLead(result.lead, result.scope, utterance);
     renderChips([{ label: 'Try a different name', act: () => promptText('What is it called?') }, ...defaultChips().slice(1)]);
     return;
   }
@@ -898,9 +989,15 @@ function handleLiveSurface(surface) {
       break;
     case 'no_route':
       endMotes(); status('');
-      toDay((body) => body.append(NoRouteCard(surface.reason)));
+      toDay((body) => {
+        body.append(NoRouteCard(surface.reason));
+        if (surface.scope) body.append(ScopeCard(surface.scope, { onSearchCategory: (cat) => runScopeSearch(cat, surface.scope) }));
+      });
       break;
     case 'no_match':
+      endMotes(); status('');
+      if (surface.lead || surface.scope) showSearchLead(surface.lead, surface.scope);
+      break;
     case 'tool_failed':
       endMotes(); status('');
       break;

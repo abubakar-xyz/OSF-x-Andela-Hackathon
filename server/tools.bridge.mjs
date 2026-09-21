@@ -64,7 +64,7 @@ export const DECLARATIONS = [
  * screen. The Live model never receives the evidence itself, so it is
  * never in a position to invent a figure from it. §23.1
  */
-export function createToolRunner({ pack, onSurface, online = false }) {
+export function createToolRunner({ pack, onSurface, online = false, search = null }) {
   const state = { payload: null, route: null };
 
   const run = async (name, args = {}) => {
@@ -75,12 +75,18 @@ export function createToolRunner({ pack, onSurface, online = false }) {
         return { say: DANGER_LINE, stop_investigation: true };
       }
       const r = await runVerification({
-        pack, utterance: args.what ?? '', online,
+        pack, utterance: args.what ?? '', online, search,
         onMote: (m) => onSurface?.({ kind: 'mote', ...m }),
       });
       if (!r.ok) {
-        onSurface?.({ kind: 'no_match', reason: r.reason });
-        return { say: r.say ?? "I couldn't check that, and I'm not going to guess.", found: false };
+        onSurface?.({ kind: 'no_match', reason: r.reason, lead: r.lead ?? null, scope: r.scope ?? null });
+        return {
+          say: r.lead
+            ? "I couldn't confirm this in the records I've checked, but a live search turned up " +
+              "something — it's on screen, and it isn't verified. Read the source yourself before trusting it."
+            : (r.say ?? "I couldn't check that, and I'm not going to guess."),
+          found: false,
+        };
       }
       state.payload = r.payload;
       onSurface?.({ kind: 'evidence', payload: r.payload });
@@ -95,7 +101,7 @@ export function createToolRunner({ pack, onSurface, online = false }) {
     if (name === 'challenge_last_finding') {
       if (!state.payload) return { say: 'There is nothing checked yet to challenge.' };
       const r = await runChallenge({
-        pack, payload: state.payload, online,
+        pack, payload: state.payload, online, search,
         onMote: (m) => onSurface?.({ kind: 'mote', ...m }),
       });
       if (!r.ok) return { say: r.say };
@@ -111,7 +117,7 @@ export function createToolRunner({ pack, onSurface, online = false }) {
         onMote: (m) => onSurface?.({ kind: 'mote', ...m }),
       });
       if (!r.ok) {
-        onSurface?.({ kind: 'no_route', reason: r.reason });
+        onSurface?.({ kind: 'no_route', reason: r.reason, scope: r.scope ?? null });
         return { found: false, say: r.say };
       }
       state.route = r.route;

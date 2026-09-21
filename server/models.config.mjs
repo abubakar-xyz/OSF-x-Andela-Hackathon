@@ -21,9 +21,18 @@ export const MODELS = {
      it. Requires NON_BLOCKING on every declaration. */
   deep: process.env.WAZI_DEEP_MODEL || 'gemini-3.8-live-extended-thinking',
 
-  /* The evidence worker. Structured output, temperature 0. Not a Live
-     model — it must never be the thing holding a conversation. §23.1 */
-  worker: process.env.WAZI_WORKER_MODEL || 'gemini-3-flash',
+  /* The evidence worker: live web search grounding for facts the Country
+     Pack doesn't have. Not a Live model — it must never be the thing
+     holding a conversation. §23.1
+     'gemini-3-flash' was never confirmed against anything and was wrong
+     in the same way the brief's models were once wrongly waved off as
+     unconfirmed (DECISIONS.md #7) — the fix there was the same fix as
+     here: check an authoritative source instead of guessing. ai.google.dev
+     is blocked in this environment, but the installed SDK is its own
+     authoritative source — 'gemini-flash-latest' is the model used
+     throughout node_modules/@google/genai's own README, including its
+     "Grounding with Google Search" example. */
+  worker: process.env.WAZI_WORKER_MODEL || 'gemini-flash-latest',
 };
 
 /* Straight from the skill's Audio Formats section. */

@@ -129,7 +129,7 @@ test('09 barge-in is always available while Wazi is speaking', () => {
 
 /* ── 10 ─────────────────────────────────────────────────────────────── */
 test('10 a tool failure is reported, not filled in', async () => {
-  const grounding = T.ground_current_information('anything', { online: false });
+  const grounding = await T.ground_current_information('anything', { online: false });
   assert.equal(grounding.ok, false);
   assert.match(grounding.reason, /offline/i);
 
@@ -267,4 +267,43 @@ test('17 identity and evidence are separable, as THREAT_MODEL.md claims', async 
   }
   assert.notEqual(store.clearIdentity, store.deleteEverything,
     'clearing details must not be an alias for deleting everything');
+});
+
+/* ── 18 ─────────────────────────────────────────────────────────────── */
+test('18 a miss outside the pack is never a dead end, and a lead is never dressed up as a finding', async () => {
+  /* No match in the pack, live search finds something real. */
+  const withLead = await runVerification({
+    pack, utterance: 'Mandera bridge tender information', online: true,
+    search: async (query) => ({
+      ok: true, query, summary: 'A local paper reported the roof contract as awarded in 2024.',
+      sources: [{ title: 'Nakuru News', url: 'https://example.go.ke/roof', domain: 'example.go.ke', tier: 'credible' }],
+      searched_at: new Date().toISOString(),
+    }),
+  });
+  assert.equal(withLead.ok, false, 'a search lead is still not a verified finding');
+  assert.equal(withLead.kind, 'no_match');
+  assert.ok(withLead.lead, 'a real search hit must be carried as a lead');
+  assert.ok(withLead.lead.sources.every((s) => s.tier !== 'primary'),
+    'a live search result must never claim primary tier — that is earned by pack curation');
+  assert.ok(withLead.scope?.country, 'the static country scope is always offered alongside a lead');
+  assert.ok(Array.isArray(withLead.scope.categories) && withLead.scope.categories.length > 0,
+    'ScopeCard needs a real category list, not just a country — this exact shape mismatch shipped once already');
+
+  /* No search capability at all (the typed/browser path, or no relay
+     configured) — must degrade to the static scope alone, never throw,
+     and never fabricate a lead out of an empty result. */
+  const withoutSearch = await runVerification({
+    pack, utterance: 'Mandera bridge tender information', online: true,
+  });
+  assert.equal(withoutSearch.lead, null, 'no search function means no lead — not an empty-but-truthy one');
+  assert.ok(withoutSearch.scope?.country, 'the offline-safe scope suggestion must still be offered');
+
+  /* A search failure must degrade the same honest way, never crash the
+     pipeline or silently disappear. */
+  const failedSearch = await runVerification({
+    pack, utterance: 'Mandera bridge tender information', online: true,
+    search: async () => ({ ok: false, reason: 'quota exceeded' }),
+  });
+  assert.equal(failedSearch.lead, null);
+  assert.ok(failedSearch.scope?.country);
 });

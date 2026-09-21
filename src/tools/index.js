@@ -149,12 +149,29 @@ export function search_country_pack(entityId, pack, { includeChallengeOnly = fal
  * rather than nothing — the difference matters, because a silent empty
  * result would be indistinguishable from "we looked and there is nothing",
  * which is exactly the inference Law 4 forbids.
+ *
+ * `search` is an injected async function `(query, context?) => result` —
+ * this file never constructs its own network client, so it stays
+ * testable without one. The browser build simply never passes one, which
+ * is what makes "offline" true rather than aspirational; the relay
+ * passes a real one backed by server/webSearch.mjs. Whatever `search`
+ * returns is a lead, never a verified fact — see that file's own
+ * header for why the ceiling is 'credible', not 'primary'.
  */
-export function ground_current_information(query, { online = false } = {}) {
+export async function ground_current_information(query, { online = false, search = null, context = '' } = {}) {
   if (!online) {
     return fail('ground_current_information', 'offline — could not check for anything newer');
   }
-  return ok({ results: [], searched_at: nowISO(), note: 'no newer public record found' });
+  if (!search) {
+    /* Online, but nothing to search with (e.g. no relay configured yet).
+       Distinct from "we searched and found nothing newer". */
+    return ok({ query, sources: [], searched_at: nowISO(), note: 'no search capability available' });
+  }
+  const r = await search(query, context);
+  if (!r.ok) return fail('ground_current_information', r.reason);
+  /* Field names match server/webSearch.mjs's own return shape exactly —
+     this is what SearchLeadCard renders, unmodified. */
+  return ok({ query, summary: r.summary, sources: r.sources, searched_at: r.searched_at, note: 'live search result — not independently verified by Wazi' });
 }
 
 /* ── 7. Verify ───────────────────────────────────────────────────────── */
@@ -260,7 +277,7 @@ export function verify_claim({ claim, entity, records, sources, fieldEvidence = 
  * could be wrong. It MUST be able to change the verdict, including to a
  * less settled one — a pass that can only confirm is a rubber stamp.
  */
-export function challenge_finding(payload, pack, { online = false } = {}) {
+export async function challenge_finding(payload, pack, { online = false, search = null } = {}) {
   const entityId = payload.entity.id;
   const all = search_country_pack(entityId, pack, { includeChallengeOnly: true });
   if (!all.ok) return fail('challenge_finding', all.reason);
@@ -282,7 +299,7 @@ export function challenge_finding(payload, pack, { online = false } = {}) {
     norm(e.name).slice(0, 14) === norm(entity?.name ?? '').slice(0, 14));
 
   /* 3 — could we check for anything newer at all? */
-  const grounding = ground_current_information(entity?.name, { online });
+  const grounding = await ground_current_information(entity?.name, { online, search, context: entity?.admin1 ?? '' });
 
   const newSources = [];
   if (superseding.length) {

@@ -23,6 +23,8 @@ import { GoogleGenAI } from '@google/genai';
 import { MODELS, AUDIO, LIMITS, THINKING_LEVEL } from './models.config.mjs';
 import { DECLARATIONS, createToolRunner } from './tools.bridge.mjs';
 import { validatePack, PACK_FILES } from '../src/evidence/pack.js';
+import { searchPublicRecords } from './webSearch.mjs';
+import { CIVIC_COUNTRIES, CIVIC_CATEGORIES } from '../src/evidence/civicScope.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
@@ -64,10 +66,52 @@ const SYSTEM = readFileSync(join(rootDir, 'prompts/identity.md'), 'utf8') + '\n\
                'Never read figures, dates, source names or reference numbers aloud — they are ' +
                'on screen.';
 
+/* One search client, reused. Built lazily so a key set after boot (or
+   never set at all) doesn't crash the process — the same "degrade, don't
+   die" posture as the WebSocket path below. */
+let searchAI = null;
+const getSearchAI = () => {
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+  if (!searchAI) searchAI = new GoogleGenAI({ apiKey });
+  return searchAI;
+};
+
+/** Injected into the tool runner, and used directly by /api/civic-search.
+ *  Never constructs its own network call outside webSearch.mjs, so both
+ *  paths stay honest in exactly the same way. */
+const search = (query, context) => {
+  const ai = getSearchAI();
+  if (!ai) return Promise.resolve({ ok: false, reason: 'no search capability configured' });
+  return searchPublicRecords({ ai, model: MODELS.worker, query, context });
+};
+
 const app = express();
+app.use(express.json());
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, models: MODELS, pack: PACK_ID, fixture: pack.meta.is_fixture });
+  res.json({ ok: true, models: MODELS, pack: PACK_ID, fixture: pack.meta.is_fixture, search: Boolean(getApiKey()) });
+});
+
+/* For the deterministic/typed path, which runs in the browser with no
+   live WebSocket session — it still deserves a real search, not just the
+   live-voice path. Same honest primitive either way. */
+app.post('/api/civic-search', async (req, res) => {
+  const { query, context } = req.body ?? {};
+  if (!query || typeof query !== 'string') {
+    res.status(400).json({ ok: false, reason: 'query is required' });
+    return;
+  }
+  const r = await search(query, typeof context === 'string' ? context : '');
+  res.json(r);
+});
+
+/* The categories and countries are static (§ civicScope.js) — no network,
+   nothing to go stale — so the browser can always ask for the list even
+   offline. Which of a country's institutions actually has a live,
+   current URL is resolved through /api/civic-search, not here. */
+app.get('/api/civic-scope', (req, res) => {
+  res.json({ countries: CIVIC_COUNTRIES, categories: CIVIC_CATEGORIES });
 });
 
 // Serve static files from repository root
@@ -110,6 +154,7 @@ wss.on('connection', async (client) => {
   const runner = createToolRunner({
     pack,
     online: true,
+    search,
     /* Everything the workspace needs to render goes straight to the
        browser. The model never sees it. */
     onSurface: (surface) => send('surface', { surface }),
