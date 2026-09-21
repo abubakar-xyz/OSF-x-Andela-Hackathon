@@ -1,0 +1,33 @@
+{
+  "procedures": [
+    {
+      "id": "proc-atia",
+      "jurisdiction": "Kenya",
+      "name": "Access to Information request",
+      "applies_to_sectors": ["health", "water", "education", "roads"],
+      "steps": [
+        "Address the request to the public entity holding the information.",
+        "Describe the information sought as specifically as you can.",
+        "State the form in which you would like to receive it.",
+        "Keep a dated copy of what you sent."
+      ],
+      "deadline_days": 21,
+      "deadline_source_id": "src-atia-2016",
+      "source_id": "src-atia-2016"
+    },
+    {
+      "id": "proc-county-complaint",
+      "jurisdiction": "Siaya County",
+      "name": "Service complaint to the county department",
+      "applies_to_sectors": ["health", "water"],
+      "steps": [
+        "Write to the responsible department describing what you observed and when.",
+        "Attach dated evidence.",
+        "Ask for a specific response — an inspection date, a status update, or a document.",
+        "If there is no reply, escalate to the Auditor-General."
+      ],
+      "deadline_days": null,
+      "source_id": "src-directory-2026"
+    }
+  ]
+}

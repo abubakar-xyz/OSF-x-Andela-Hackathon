@@ -1,0 +1,76 @@
+{
+  "sources": [
+    {
+      "id": "src-ocp-2023",
+      "publisher": "Kenya Open Contracting Portal",
+      "title": "Project status return — Bondo Sub-County Health Centre II",
+      "url": "https://example-fixture.invalid/ocp/BSC-HC-II",
+      "tier": "primary",
+      "published_at": "2023-03-14",
+      "retrieved_at": "2026-09-19",
+      "excerpt": "Project status: Completed. Reported complete 14 March 2023. Contract sum KES 41,200,000. Implementing agency: Siaya County Department of Health.",
+      "quality_notes": "Status returns are self-reported by the implementing agency and are not independently inspected before publication.",
+      "is_fixture": true
+    },
+    {
+      "id": "src-auditor-2025",
+      "publisher": "Office of the Auditor-General",
+      "title": "County health infrastructure — annual report extract",
+      "url": "https://example-fixture.invalid/oag/2025/siaya",
+      "tier": "primary",
+      "published_at": "2025-11-02",
+      "retrieved_at": "2026-09-19",
+      "excerpt": "Three facilities reported as complete in the 2022/23 return could not be confirmed as operational at the time of audit. Final payment certificates were not availed for review.",
+      "quality_notes": "The extract does not name individual facilities, so the link to any one project is inferential.",
+      "is_fixture": true
+    },
+    {
+      "id": "src-gazette-2024",
+      "publisher": "Kenya Gazette",
+      "title": "Notice of variation — county health works",
+      "url": "https://example-fixture.invalid/gazette/2024/0418",
+      "tier": "primary",
+      "published_at": "2024-04-18",
+      "retrieved_at": "2026-09-19",
+      "excerpt": "Notice is given that the scope of works for Bondo Sub-County Health Centre II is varied to exclude the maternity wing, with revised completion expected in the 2025/26 financial year.",
+      "quality_notes": "Gazette notices are authoritative for the fact of variation but do not report physical progress.",
+      "is_fixture": true
+    },
+    {
+      "id": "src-press-2025",
+      "publisher": "The Nation (fixture stand-in)",
+      "title": "Residents query stalled health centre",
+      "url": "https://example-fixture.invalid/news/2025/bondo",
+      "tier": "credible",
+      "published_at": "2025-06-08",
+      "retrieved_at": "2026-09-19",
+      "excerpt": "Residents say the facility has not admitted patients since construction slowed in 2023. The county department did not respond to a request for comment.",
+      "quality_notes": "Single outlet, no independent corroboration of the dates given.",
+      "is_fixture": true
+    },
+    {
+      "id": "src-directory-2026",
+      "publisher": "Siaya County Government directory",
+      "title": "Department of Health — public contact",
+      "url": "https://example-fixture.invalid/siaya/contacts",
+      "tier": "primary",
+      "published_at": "2026-07-01",
+      "retrieved_at": "2026-09-19",
+      "excerpt": "Department of Health, Siaya County. Public enquiries: health@fixture.invalid. Postal: P.O. Box 803, Siaya.",
+      "quality_notes": "Office-level contact. The directory does not confirm the current holder of the post.",
+      "is_fixture": true
+    },
+    {
+      "id": "src-atia-2016",
+      "publisher": "Laws of Kenya",
+      "title": "Access to Information Act, 2016 — section 9",
+      "url": "https://example-fixture.invalid/law/atia-2016",
+      "tier": "primary",
+      "published_at": "2016-08-31",
+      "retrieved_at": "2026-09-19",
+      "excerpt": "A public entity shall respond to an application for access to information within twenty-one days of receipt.",
+      "quality_notes": "Statutory text. Administrative practice may differ from the statutory period.",
+      "is_fixture": true
+    }
+  ]
+}

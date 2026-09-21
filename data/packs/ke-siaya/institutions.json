@@ -1,0 +1,30 @@
+{
+  "institutions": [
+    {
+      "id": "inst-siaya-health",
+      "body": "Siaya County Government",
+      "office": "Department of Health",
+      "jurisdiction": "Siaya County",
+      "mandate": "Responsible for the construction, equipping and operation of sub-county health facilities in Siaya County.",
+      "mandate_source_id": "src-directory-2026",
+      "escalation_id": "inst-oag"
+    },
+    {
+      "id": "inst-siaya-water",
+      "body": "Siaya County Government",
+      "office": "Department of Water",
+      "jurisdiction": "Siaya County",
+      "mandate": "Responsible for county water supply schemes.",
+      "mandate_source_id": "src-directory-2026",
+      "escalation_id": "inst-oag"
+    },
+    {
+      "id": "inst-oag",
+      "body": "Office of the Auditor-General",
+      "office": "Complaints and public enquiries",
+      "jurisdiction": "Kenya",
+      "mandate": "Audits the use of public funds by county governments and receives information from the public.",
+      "mandate_source_id": "src-auditor-2025"
+    }
+  ]
+}

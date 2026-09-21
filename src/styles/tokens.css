@@ -1,0 +1,93 @@
+/* Wazi design tokens — DESIGN.md §11.
+   This is the ONLY file in the product that contains raw colour values. */
+
+:root {
+  /* ─── Night (companion side) ─────────────────────────────── */
+  --ink-900: #05121A;
+  --ink-800: #071820;
+  --ink-700: #0D2530;
+  --ink-600: #14333F;
+  --ink-500: #1E4453;
+
+  /* ─── Day (record side) ──────────────────────────────────── */
+  --paper-50:  #FDFBF5;
+  --paper-100: #F7F3E8;
+  --paper-200: #EFE9D9;
+  --paper-300: #E2DAC6;
+
+  /* ─── Text ───────────────────────────────────────────────── */
+  --text-on-ink:         #EAF2F0;
+  --text-on-ink-muted:   #9FB4B8;
+  --text-on-paper:       #0A1F27;
+  --text-on-paper-muted: #47606B;
+
+  /* ─── Accents. LIGHT RAMP = DARK SURFACES ONLY. ──────────── */
+  --teal-400: #5BE0CF;
+  --teal-500: #16C6B1;
+  --teal-700: #0E8E7F;
+  --teal-800: #0B6F63;
+
+  --amber-400: #FFD37A;
+  --amber-500: #F4B942;
+  --amber-700: #9C6B0C;
+
+  /* ─── Evidence states. Word + glyph always accompany. ────── */
+  --state-verified:     #4BCB91;  --state-verified-ink:     #1C6B46;
+  --state-corroborated: #16C6B1;  --state-corroborated-ink: #0B6F63;
+  --state-reported:     #F4B942;  --state-reported-ink:     #9C6B0C;
+  --state-conflicting:  #EC7067;  --state-conflicting-ink:  #9E2C24;
+  --state-unknown:      #78909A;  --state-unknown-ink:      #3E545E;
+
+  --slate-500: #78909A;
+  --slate-700: #47606B;
+
+  /* ─── Semantic ───────────────────────────────────────────── */
+  --focus-ring: #FFD37A;
+  --danger:     #EC7067;
+  --scrim:      rgba(5, 18, 26, 0.72);
+
+  /* ─── Type (§11.2) ───────────────────────────────────────── */
+  --font-ui:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-rec:   'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-mono:  'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --display:  600 34px/38px var(--font-rec);
+  --title:    600 24px/30px var(--font-rec);
+  --heading:  600 19px/26px var(--font-ui);
+  --body:     400 16px/24px var(--font-ui);
+  --bodysm:   400 15px/22px var(--font-ui);
+  --label:    500 14px/20px var(--font-ui);
+  --quote:    400 18px/28px var(--font-rec);
+  --mono:     400 15px/22px var(--font-mono);
+
+  /* ─── Space / radius (§11.4) ─────────────────────────────── */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px; --s5: 20px;
+  --s6: 24px; --s7: 32px; --s8: 40px; --s9: 56px; --s10: 72px; --s11: 96px;
+
+  --r-chip: 8px; --r-card: 14px; --r-sheet: 24px; --r-pill: 999px; --r-img: 10px;
+
+  --gutter: 16px;
+  --content-max: 520px;
+  --touch: 48px;
+
+  /* ─── Motion (§10.1) ─────────────────────────────────────── */
+  --dur-tap:   120ms;
+  --dur-fast:  200ms;
+  --dur-base:  320ms;
+  --dur-slow:  480ms;
+  --dur-world: 640ms;
+
+  --ease-out:    cubic-bezier(0.20, 0.80, 0.20, 1.00);
+  --ease-in-out: cubic-bezier(0.40, 0.00, 0.20, 1.00);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1.00);
+}
+
+/* Reduced motion collapses every duration. The product still works;
+   it simply stops moving. §10.2 / §29. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-tap: 1ms; --dur-fast: 1ms; --dur-base: 160ms;
+    --dur-slow: 160ms; --dur-world: 200ms;
+    --ease-spring: var(--ease-out);
+  }
+}

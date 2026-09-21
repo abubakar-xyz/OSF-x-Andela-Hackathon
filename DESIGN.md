@@ -1159,7 +1159,7 @@ it; it never holds its own state. The server relays events into it.
                (a complete journey,            │                │
                 not a degraded one)        turn ends            │
                                                ▼                │
-                                            routing             │
+                                             triage             │
                                      classify_civic_intent      │
                                                │                │
         ┌───────────────┬──────────────┬───────┴───────┐        │
@@ -1193,6 +1193,9 @@ it; it never holds its own state. The server relays events into it.
 
 **Cross-cutting states, available from anywhere:** `offline`, `reconnecting`, `tool_failed`,
 `permission_blocked`, `safety_redirect`.
+
+**Naming:** the first branch point is `triage` (intent classification) and the later one is
+`routing` (institution lookup). An earlier draft of this diagram called both "routing".
 
 **Invariants, asserted in tests:**
 - `export` is unreachable except through `disclosure`. No other transition exists.

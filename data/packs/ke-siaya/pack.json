@@ -1,0 +1,18 @@
+{
+  "id": "ke-siaya",
+  "schema_version": "1.0",
+  "country": "KE",
+  "country_name": "Kenya",
+  "admin1": "Siaya County",
+  "label": "Siaya County, Kenya",
+  "built_at": "2026-09-21",
+  "maintainer": "Wazi hackathon team",
+  "licence": "CC-BY-4.0 for pack structure; source excerpts remain the property of their publishers",
+  "is_fixture": true,
+  "fixture_notice": "Every record in this pack is a DEMO FIXTURE. It is modelled on the shape of real Kenyan public-contracting and health-facility records, but it is NOT live government data and must never be presented as such. Replace with hand-verified records before any public demonstration. See PROVENANCE.md.",
+  "languages": [
+    { "code": "en", "name": "English", "tier": "tested" },
+    { "code": "sw", "name": "Kiswahili", "tier": "tested" }
+  ],
+  "files": ["sources.json", "entities.json", "records.json", "institutions.json", "routes.json", "procedures.json"]
+}
