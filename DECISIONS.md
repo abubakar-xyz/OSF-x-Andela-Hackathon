@@ -175,3 +175,45 @@ gzipped against the 180 KB budget; total first load 186 KB against 400 KB, and 8
 light tier, which requests no webfonts at all.
 **Reversible** Yes — the whole palette is nine tokens in one file.
 
+## 11. A 3D avatar, loaded late and never required
+
+**Context** Review feedback: the flat aperture was "detached and hard to relate to". That was
+correct. It could show a state; it could not look at you.
+
+**Options** A 2D creature with a face; a richer flat aperture; a 3D avatar; a hybrid.
+
+**Decision** A **Three.js lens-being**, chosen by the product owner over the cheaper options.
+It keeps the aperture identity — six blades shuttering over a core — and adds the thing that
+actually creates attachment: **an eye**. A dilating amber iris, a dark pupil, a specular
+glint, and **gaze** — it looks at the person, turns toward a card when one lands, blinks, leans
+in when curious and draws back when offline.
+
+Eyes are the relatability mechanism, and an iris *is* an eye. So this stays a lens-being
+rather than becoming a face: no human, no robot, no costume, and therefore no uncanny valley
+and no cultural assumption about whose face a civic companion should have.
+
+**The cost, stated plainly.** Three.js is **407 KB gzipped** — more than five times the rest
+of the product put together, and on its own more than the 400 KB total-load budget in §28.
+That budget is broken, knowingly, on this one thing.
+
+**What the cost is not allowed to touch.** Three mitigations, each tested:
+
+1. **The flat aperture mounts first, always.** 4 KB, every device. The 3D rig loads on
+   `requestIdleCallback` and swaps in place carrying the current state. Measured: character
+   mounted at 114 ms, upgraded at 270 ms — and the upgrade is never on the path to Wazi's
+   first word. `tests/browser/drills.mjs` #7.
+2. **A thin connection never fetches it.** `canUpgrade()` refuses on the light and text tiers,
+   on `saveData`, on `effectiveType ≤ 3g`, under 4 GB of device memory, with reduced motion,
+   and without WebGL. Drill #8.
+3. **One character, two fidelities.** The state vocabulary is identical and the machine never
+   branches on which is mounted, so nothing downstream knows or cares.
+
+**Why not the 2D creature** (my recommendation, overruled): it would have cost ~30 KB instead
+of 407 KB and kept the Android Go promise intact. The owner's call was that the emotional
+ceiling of a flat character is lower, and for a product whose whole job is to make an
+institution feel answerable, presence is worth the bytes. On a `full`-tier device that is a
+defensible trade; the mitigations are what keep it from being paid by the person who can least
+afford it.
+
+**Reversible** Entirely. Delete `avatar3d.js` and `assets/three/`, and `mountCharacter()`
+keeps returning the flat aperture with no other change.

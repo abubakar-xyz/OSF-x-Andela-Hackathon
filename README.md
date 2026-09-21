@@ -94,8 +94,15 @@ narrator that never holds a fact, and a separate worker produces schema-validate
 payload whose facts do not resolve is rejected at the boundary rather than shown. Full
 reasoning in [`DESIGN.md`](DESIGN.md) §23.1.
 
-**Zero runtime dependencies, no build step.** 67 KB gzipped JS against a 180 KB budget; 82 KB
-total first load against 400 KB. See [`DECISIONS.md`](DECISIONS.md) #5.
+**No build step.** The core app has no runtime dependencies: 75 KB gzipped JS against a 180 KB
+budget, 192 KB first load on a full-tier device, **94 KB on a thin connection** — which never
+fetches the webfonts or the 3D rig.
+
+The character is **one being at two fidelities**. A 4 KB flat aperture mounts immediately
+(measured: working character at 114 ms); a Three.js lens-being with a real eye, gaze and blink
+swaps in on idle where the device can carry it. Three.js is 407 KB gzipped — knowingly over
+budget, quarantined behind `canUpgrade()`, and never on the path to Wazi's first word.
+[`DECISIONS.md`](DECISIONS.md) #5 and #11.
 
 ## Data provenance and limitations
 

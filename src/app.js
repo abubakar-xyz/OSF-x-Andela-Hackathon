@@ -11,6 +11,7 @@ import { el, clear, $, fmtDate } from './core/dom.js';
 import { bus } from './core/bus.js';
 import { createMachine, APERTURE_FOR } from './core/machine.js';
 import { createAperture, prefersReducedMotion } from './character/aperture.js';
+import { mountCharacter } from './character/index.js';
 import { loadPack } from './evidence/pack.js';
 import { runVerification, runChallenge, runRouting } from './evidence/pipeline.js';
 import { classify_civic_intent } from './tools/index.js';
@@ -245,6 +246,10 @@ async function verify(utterance) {
   syncAperture();
 
   showEvidence();
+  /* It turns toward the thing it just found. Gaze is the whole reason
+     for the 3D rig — a character that never looks at anything is a
+     graphic, not a companion. */
+  app.aperture.lookAt?.(-0.5, -0.35);
   cue(app.payload.evidence_state === 'CONFLICTING' ? 'conflicting' : 'evidence');
   say(narrate(app.payload));
 }
@@ -908,7 +913,10 @@ async function boot() {
   app.machine = createMachine();
   app.machine.onTransition(({ state }) => { bus.emit('state', state); });
 
-  app.aperture = createAperture({ size: 168, motes: true, live: true });
+  /* The hero character upgrades to 3D where the device can carry it;
+     the companion stays flat at 40px, where depth buys nothing and a
+     second WebGL context would cost real memory. */
+  app.aperture = mountCharacter({ size: 200, motes: true, live: true });
   host.aperture.append(app.aperture.el);
   app.companion = createAperture({ size: 40, motes: true });
   host.companionHost.append(app.companion.el);

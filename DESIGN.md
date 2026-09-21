@@ -1795,11 +1795,28 @@ Non-negotiable. A civic product that only works on a flagship phone is not a civ
 |---|---|---|
 | JS, gzipped, first load | **≤ 180 KB** | — |
 | Total first load incl. fonts + assets | **≤ 400 KB** | — |
+| The 3D avatar, loaded late | **407 KB gz, deliberately over budget** | see below |
 | First Contentful Paint | **≤ 1.5 s** | Moto G Power, throttled "Slow 4G" |
 | Time to Wazi's first word (warm) | **≤ 1.2 s** | same |
 | Character frame budget | **≤ 2 ms/frame** | 3 GB Android Go |
 | Evidence round trip | **p50 ≤ 4 s, p95 ≤ 9 s** | — |
 | Data per 3-min session, low-data mode | **≤ 1.5 MB** | — |
+
+#### The one budget we knowingly break
+
+Three.js is 407 KB gzipped — more than the whole rest of the product, and on its own more than
+the total-load budget above. `DECISIONS.md` #11 records why that was accepted and what it is
+not allowed to cost:
+
+- the **flat aperture mounts first, always** (4 KB), and the 3D rig swaps in on idle carrying
+  the current state — measured at 114 ms to a working character, 270 ms to the upgrade
+- **nothing on a thin connection ever fetches it**: refused on the light and text tiers, on
+  `saveData`, on `effectiveType ≤ 3g`, under 4 GB of device memory, with reduced motion, and
+  without WebGL
+- it is **one character at two fidelities** — same states, and the machine never branches
+
+A budget broken on purpose, in one place, with the cost quarantined away from the people the
+budget exists to protect, is a decision. A budget broken everywhere is a failure.
 
 ### Three performance tiers, auto-selected, manually overridable
 

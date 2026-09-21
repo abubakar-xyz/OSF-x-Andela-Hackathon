@@ -106,6 +106,10 @@ button, [role="button"], select, summary { min-height: var(--touch); }
     transparent 70%);
 }
 .tier-light .aperture::after, .tier-text .aperture::after { display: none; }
+/* The 3D rig carries its own barrel and rim, so the CSS housing would
+   be a second ring around the first. */
+.aperture--3d::before { display: none; }
+.aperture--3d canvas { border-radius: 50%; }
 .aperture[data-state="offline"]::before { border-color: var(--ink-600); }
 .aperture[data-state="offline"]::after,
 .aperture[data-state="dormant"]::after { opacity: 0.35; }

@@ -132,5 +132,81 @@ console.log('\nDrill 6 — export is unreachable without approval');
   await ctx.close();
 }
 
+console.log('\nDrill 7 — the 3D avatar is an upgrade, never a gate');
+{
+  /* What matters is ORDER, not a snapshot: three.js is served from
+     localhost here and upgrades in well under a second, so asserting
+     "still flat after 1.1s" tests the fixture, not the product. Record
+     both moments in-page and compare them. */
+  const ctx = await browser.newContext({ viewport:{width:390,height:844} });
+  await ctx.addInitScript(() => {
+    window.__t = {};
+    addEventListener('wazi:upgraded', () => { window.__t.upgraded ??= performance.now(); }, true);
+    /* `document` always exists at init-script time; documentElement does
+       not, which is why an earlier version threw here. */
+    new MutationObserver(() => {
+      if (!window.__t.mounted && document.querySelector('#apertureHost .aperture')) {
+        window.__t.mounted = performance.now();
+      }
+      if (!window.__t.spoke && document.querySelector('.cap-line')) {
+        window.__t.spoke = performance.now();
+      }
+    }).observe(document, { childList: true, subtree: true });
+  });
+  const page = await ctx.newPage();
+  const errs=[]; page.on('pageerror',e=>errs.push(e.message));
+  page.on('console',m=>{if(m.type()==='error'&&!/404/.test(m.text()))errs.push(m.text());});
+  await page.goto('http://localhost:4176/',{waitUntil:'networkidle'});
+  await page.waitForTimeout(400);
+  await page.locator('#cold button').first().click();
+  await page.waitForTimeout(6000);
+
+  const t = await page.evaluate(() => ({ ...window.__t, is3D: __wazi.aperture.is3D }));
+  chk('character mounted', Number.isFinite(t.mounted), `at ${Math.round(t.mounted)}ms`);
+  chk('Wazi spoke', Number.isFinite(t.spoke), `at ${Math.round(t.spoke)}ms`);
+  /* The property: the person gets a working character before 407KB of
+     three.js is anywhere near the wire. */
+  chk('mounted BEFORE any 3D upgrade',
+      !Number.isFinite(t.upgraded) || t.mounted <= t.upgraded,
+      Number.isFinite(t.upgraded)
+        ? `mounted ${Math.round(t.mounted)}ms, upgraded ${Math.round(t.upgraded)}ms`
+        : 'stayed flat');
+
+  /* Whatever fidelity ends up mounted, the state vocabulary is the same
+     and the machine never branches on it. */
+  const states = await page.evaluate(async () => {
+    const out = [];
+    for (const s of ['resting','listening','thinking','speaking','offline']) {
+      __wazi.aperture.setState(s); out.push(__wazi.aperture.state);
+    }
+    __wazi.aperture.setState('resting');
+    return out;
+  });
+  chk('every state accepted at either fidelity',
+      states.join(',') === 'resting,listening,thinking,speaking,offline', states.join(','));
+  chk('no page errors', errs.length===0, errs[0]);
+  await ctx.close();
+}
+
+console.log('\nDrill 8 — a thin connection never downloads the 3D rig');
+{
+  const {page,ctx,errs}=await fresh();
+  const gated = await page.evaluate(async () => {
+    const { canUpgrade } = await import('/src/character/index.js');
+    const root = document.documentElement;
+    const before = root.className;
+    root.className = 'tier-light';
+    const light = canUpgrade();
+    root.className = 'tier-text';
+    const text = canUpgrade();
+    root.className = before;
+    return { light, text };
+  });
+  chk('light tier refuses the upgrade', gated.light === false);
+  chk('text tier refuses the upgrade', gated.text === false);
+  chk('no page errors', errs.length===0, errs[0]);
+  await ctx.close();
+}
+
 console.log(`\n${bad?bad+' check(s) failed':'all drills pass'}\n`);
 await browser.close(); server.close(); process.exit(bad?1:0);
